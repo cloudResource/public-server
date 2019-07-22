@@ -88,7 +88,7 @@ def info(request):
     try:
         user_id = request.session.get('user_id')
         if not user_id:
-            return JsonResponse(data={"error": "未登录", "status": 400})
+            return JsonResponse(data={"error": "登录过期", "status": 401})
         user = User.objects.get(id=user_id)
         label_set = user.label_set.all()
         label_list = []
@@ -160,16 +160,16 @@ def forget_password(request):
         if sms_code_server is None:
             return JsonResponse(data={"error": "短信验证码已失效", "status": 400})
         if sms_code_client != sms_code_server.decode():
-            JsonResponse(data={"error": "短信验证码有误", "status": 400})
-        try:
-            user = User.objects.get(mobile=mobile)
-            user.password = password
-            user.save()
-        except:
-            return JsonResponse(data={"error": "该手机号未注册", "status": 400})
+            return JsonResponse(data={"error": "短信验证码有误", "status": 400})
+        user = User.objects.get(mobile=mobile)
+        user.password = password
+        user.save()
         return JsonResponse(data={"message": "修改密码成功", "status": 200})
     except Exception as e:
         logger.error(e)
+        e = str(e)
+        if e == "User matching query does not exist.":
+            return JsonResponse(data={"error": "此手机号未注册", "status": 400})
         return JsonResponse(data={"error": "修改密码失败", "status": 400})
 
 
@@ -203,11 +203,6 @@ def register(request):
             return JsonResponse(data={"error": "短信验证码已失效", "status": 400})
         if sms_code_client != sms_code_server.decode():
             return JsonResponse(data={"error": "短信验证码有误", "status": 400})
-        try:
-            if User.objects.get(mobile=mobile):
-                return JsonResponse(data={"error": "手机号已注册", "status": 400})
-        except:
-            pass
         # 判断是否勾选用户协议
         # if allow != 'on':
         #     return JsonResponse(data={"message": "请勾选用户协议", "status": 400})
@@ -215,6 +210,11 @@ def register(request):
         return JsonResponse(data={"message": "注册成功", "status": 200})
     except Exception as e:
         logger.error(e)
+        e = str(e)
+        pat = r"Duplicate entry.*for key 'mobile'"
+        result = re.findall(pat, e)
+        if result:
+            return JsonResponse(data={"error": "手机号已注册", "status": 400})
         return JsonResponse(data={"error": "注册失败", "status": 400})
 
 

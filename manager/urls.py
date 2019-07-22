@@ -17,5 +17,8 @@ from django.conf.urls import url
 from . import views
 
 urlpatterns = [
-    url(r'^add_teacher$', views.add_teacher),  # 用户注册
+    url(r'^get_teachers$', views.get_teachers),  # 查看所有教师
+    url(r'^add_teacher$', views.add_teacher),  # 添加教师
+    url(r'^del_teacher$', views.del_teacher),  # 删除教师
+    url(r'^add_class$', views.add_class),  # 删除教师
 ]
