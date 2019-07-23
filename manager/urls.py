@@ -17,8 +17,10 @@ from django.conf.urls import url
 from . import views
 
 urlpatterns = [
-    url(r'^get_teachers$', views.get_teachers),  # 查看所有教师
+    url(r'^get_teachers$', views.get_teachers),  # 查询所有教师
     url(r'^add_teacher$', views.add_teacher),  # 添加教师
     url(r'^del_teacher$', views.del_teacher),  # 删除教师
-    url(r'^add_class$', views.add_class),  # 删除教师
+    url(r'^get_classes$', views.get_classes),  # 查询所有班级
+    url(r'^add_grade$', views.add_grade),  # 添加年级
+    url(r'^add_class$', views.add_class),  # 添加班级
 ]

@@ -34,6 +34,7 @@ class Grade(models.Model):
 class Class(models.Model):
     class_name = models.CharField(max_length=64, null=True, help_text="班级名称")
     grade_id = models.ForeignKey(Grade, null=True, db_column="grade_id")
+    school_id = models.ForeignKey(School, null=True, db_column="school_id")
 
     class Meta:
         db_table = "tb_class"

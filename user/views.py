@@ -54,7 +54,7 @@ def enter(request):
                             status=200)
     except Exception as e:
         logger.error(e)
-        return JsonResponse(data={"error": "登录失败", "status": 400})
+        return JsonResponse(data={"error": "登录失败", "status": 400}, status=400)
 
 
 def logout(request):
@@ -80,7 +80,7 @@ def add_label(request):
         return JsonResponse(data={"message": "添加用户标签成功", "status": 200})
     except Exception as e:
         logger.error(e)
-        return JsonResponse(data={"error": "添加用户标签失败", "status": 400})
+        return JsonResponse(data={"error": "添加用户标签失败", "status": 400}, status=400)
 
 
 def info(request):
@@ -101,7 +101,7 @@ def info(request):
         return JsonResponse(data={"data": data, "status": 200})
     except Exception as e:
         logger.error(e)
-        return JsonResponse(data={"error": "获取数据失败", "status": 400})
+        return JsonResponse(data={"error": "获取数据失败", "status": 400}, status=400)
 
 
 def change_password(request):
@@ -133,7 +133,7 @@ def change_password(request):
         return JsonResponse(data={"message": "修改密码成功", "status": 200})
     except Exception as e:
         logger.error(e)
-        return JsonResponse(data={"error": "修改密码失败", "status": 400})
+        return JsonResponse(data={"error": "修改密码失败", "status": 400}, status=400)
 
 
 def forget_password(request):
@@ -170,7 +170,7 @@ def forget_password(request):
         e = str(e)
         if e == "User matching query does not exist.":
             return JsonResponse(data={"error": "此手机号未注册", "status": 400})
-        return JsonResponse(data={"error": "修改密码失败", "status": 400})
+        return JsonResponse(data={"error": "修改密码失败", "status": 400}, status=400)
 
 
 def register(request):
@@ -188,8 +188,8 @@ def register(request):
         if not re.match(r'^[0-9A-Za-z]{8,20}$', password):
             return JsonResponse(data={"error": "请输入8-20位的密码", "status": 400})
         # 判断用户名是否是5-20个字符
-        # if not re.match(r'^[a-zA-Z0-9_-]{5,20}$', username):
-        #     return JsonResponse(data={"error": "请输入5-20个字符的用户名", "status": 400})
+        if not re.match(r'^[a-zA-Z0-9_-]{1,20}$', username):
+            return JsonResponse(data={"error": "请输入5-20个字符的用户名", "status": 400})
         # 判断两次密码是否一致
         if password != password2:
             return JsonResponse(data={"error": "两次输入的密码不一致", "status": 400})
@@ -215,7 +215,7 @@ def register(request):
         result = re.findall(pat, e)
         if result:
             return JsonResponse(data={"error": "手机号已注册", "status": 400})
-        return JsonResponse(data={"error": "注册失败", "status": 400})
+        return JsonResponse(data={"error": "注册失败", "status": 400}, status=400)
 
 
 def sms_codes(request):
