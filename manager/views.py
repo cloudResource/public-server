@@ -1,7 +1,7 @@
 from django.http import JsonResponse
 from django.shortcuts import render
 
-from manager.models import Teacher, Grade, Class
+from manager.models import Teacher, Grade, Class, Project
 from user.models import User
 import logging
 
@@ -163,6 +163,30 @@ def add_class(request):
         grade_obj = Grade.objects.get(id=grade_id)
         Class.objects.create(school_id=admin_school_obj, class_name=class_name, grade_id=grade_obj)
         return JsonResponse(data={"message": "添加成功", "status": 200})
+    except Exception as e:
+        logger.error(e)
+        return JsonResponse(data={"error": "添加失败", "status": 400}, status=400)
+
+
+def get_projects(request):
+    """
+    获取项目相关信息
+    """
+    token = request.META.get("HTTP_TOKEN")
+    try:
+        project_set = Project.objects.all()
+        project_list = []
+        for project_obj in project_set:
+            project_id = project_obj.id
+            project_name = project_obj.name
+            app_id = project_obj.app_id
+            app_secret = project_obj.app_secret
+            project_dict = {"project_id": project_id,
+                            "project_name": project_name,
+                            "app_id": app_id,
+                            "app_secret": app_secret}
+            project_list.append(project_dict)
+        return JsonResponse(data={"data": project_list, "status": 200})
     except Exception as e:
         logger.error(e)
         return JsonResponse(data={"error": "添加失败", "status": 400}, status=400)

@@ -21,28 +21,24 @@ logger = logging.getLogger("django.request")
 def enter(request):
     """实现用户登录逻辑"""
     # 接收参数
-    try:
-        mobile = request.POST.get('mobile')
-        password = request.POST.get('password')
-        # remembered = request.POST.get('remembered')
-
-        # 校验参数
-        if not all([mobile, password]):
-            return JsonResponse(data={"error": "缺少必传参数", "status": 400})
-        if not re.match(r'^[a-zA-Z0-9_-]{5,20}$', mobile):
-            return JsonResponse(data={"error": "请输入正确的手机号", "status": 400})
-        if not re.match(r'^[0-9A-Za-z]{8,20}$', password):
-            return JsonResponse(data={"error": "密码最少8位，最长20位", "status": 400})
+    mobile = request.POST.get('mobile')
+    password = request.POST.get('password')
+    # remembered = request.POST.get('remembered')
+    # 校验参数
+    if not all([mobile, password]):
+        return JsonResponse(data={"error": "缺少必传参数", "status": 400})
+    if not re.match(r'^[a-zA-Z0-9_-]{5,20}$', mobile):
+        return JsonResponse(data={"error": "请输入正确的手机号", "status": 400})
+    if not re.match(r'^[0-9A-Za-z]{8,20}$', password):
+        return JsonResponse(data={"error": "密码最少8位，最长20位", "status": 400})
         # 使用手机号查询用户是否存在，如果用户存在，再校验密码是否正确
-        try:
-            user = User.objects.get(mobile=mobile)
-            if user.password != password:
-                return JsonResponse(data={"error": "账号或密码错误", "status": 400})
-            role = user.role
-            user_name = user.username
-            user_id = user.id
-        except:
+    try:
+        user = User.objects.get(mobile=mobile)
+        if user.password != password:
             return JsonResponse(data={"error": "账号或密码错误", "status": 400})
+        role = user.role
+        user_name = user.username
+        user_id = user.id
         # 状态保持
         request.session['user_id'] = user_id
         request.session['user_name'] = user_name
@@ -65,12 +61,12 @@ def logout(request):
 
 def add_label(request):
     """添加用户标签"""
+    label = request.POST.get('label')
+    user_id = request.session.get('user_id')
+    # 校验参数
+    if not label:
+        return JsonResponse(data={"error": "缺少必传参数", "status": 400})
     try:
-        label = request.POST.get('label')
-        user_id = request.session.get('user_id')
-        # 校验参数
-        if not label:
-            return JsonResponse(data={"error": "缺少必传参数", "status": 400})
         labels = Label.objects.filter(user_id=user_id)
         count = len(labels)
         if count >= 3:
@@ -85,11 +81,11 @@ def add_label(request):
 
 def info(request):
     """个人中心"""
+    token = request.META.get("HTTP_TOKEN")
     try:
-        user_id = request.session.get('user_id')
-        if not user_id:
-            return JsonResponse(data={"error": "登录过期", "status": 401})
-        user = User.objects.get(id=user_id)
+        user = User.objects.filter(openid=token).first()
+        if not user:
+            return JsonResponse(data={"message": "用户未注册", "status": 200})
         label_set = user.label_set.all()
         label_list = []
         for label_obj in label_set:
@@ -106,29 +102,25 @@ def info(request):
 
 def change_password(request):
     """修改密码"""
+    old_password = request.POST.get('old_password')
+    new_password = request.POST.get('new_password')
+    new_password2 = request.POST.get('new_password2')
+    password = request.session.get('password')
+    user_id = request.session.get('user_id')
+    # 校验参数
+    if not all([old_password, new_password, new_password2]):
+        return JsonResponse(data={"error": "缺少必传参数", "status": 400})
+    if old_password != password:
+        return JsonResponse(data={"error": "原始密码错误", "status": 400})
+    if not re.match(r'^[0-9A-Za-z]{8,20}$', new_password):
+        return JsonResponse(data={"error": "密码最少8位，最长20位", "status": 400})
+    if new_password != new_password2:
+        return JsonResponse(data={"error": "两次输入的密码不一致", "status": 400})
+    # 修改密码
     try:
-        old_password = request.POST.get('old_password')
-        new_password = request.POST.get('new_password')
-        new_password2 = request.POST.get('new_password2')
-        password = request.session.get('password')
-        user_id = request.session.get('user_id')
-        # 校验参数
-        if not all([old_password, new_password, new_password2]):
-            return JsonResponse(data={"error": "缺少必传参数", "status": 400})
-        if old_password != password:
-            return JsonResponse(data={"error": "原始密码错误", "status": 400})
-        if not re.match(r'^[0-9A-Za-z]{8,20}$', new_password):
-            return JsonResponse(data={"error": "密码最少8位，最长20位", "status": 400})
-        if new_password != new_password2:
-            return JsonResponse(data={"error": "两次输入的密码不一致", "status": 400})
-        # 修改密码
-        try:
-            user = User.objects.get(id=user_id)
-            user.password = new_password
-            user.save()
-        except:
-            return JsonResponse(data={"error": "修改密码失败", "status": 400})
-        # 清理状态保持信息
+        user = User.objects.get(id=user_id)
+        user.password = new_password
+        user.save()
         request.session.flush()
         return JsonResponse(data={"message": "修改密码成功", "status": 200})
     except Exception as e:
@@ -138,29 +130,29 @@ def change_password(request):
 
 def forget_password(request):
     """忘记密码"""
+    mobile = request.POST.get('mobile')
+    sms_code_client = request.POST.get('sms_code')
+    password = request.POST.get('password')
+    password2 = request.POST.get('password2')
+    if not all([sms_code_client, mobile, password, password2]):
+        return JsonResponse(data={"error": "缺少必传参数", "status": 400})
+    # 判断密码是否是8-20个数字
+    if not re.match(r'^[0-9A-Za-z]{8,20}$', password):
+        return JsonResponse(data={"error": "请输入8-20位的密码", "status": 400})
+    # 判断两次密码是否一致
+    if password != password2:
+        return JsonResponse(data={"error": "两次输入的密码不一致", "status": 400})
+    # 判断手机号是否合法
+    if not re.match(r'^1[3-9]\d{9}$', mobile):
+        return JsonResponse(data={"error": "请输入正确的手机号码", "status": 400})
+    # 判断短信验证码是否输入正确
+    redis_conn = get_redis_connection('verify_codes')
+    sms_code_server = redis_conn.get('sms_%s' % mobile)
+    if sms_code_server is None:
+        return JsonResponse(data={"error": "短信验证码已失效", "status": 400})
+    if sms_code_client != sms_code_server.decode():
+        return JsonResponse(data={"error": "短信验证码有误", "status": 400})
     try:
-        mobile = request.POST.get('mobile')
-        sms_code_client = request.POST.get('sms_code')
-        password = request.POST.get('password')
-        password2 = request.POST.get('password2')
-        if not all([sms_code_client, mobile, password, password2]):
-            return JsonResponse(data={"error": "缺少必传参数", "status": 400})
-        # 判断密码是否是8-20个数字
-        if not re.match(r'^[0-9A-Za-z]{8,20}$', password):
-            return JsonResponse(data={"error": "请输入8-20位的密码", "status": 400})
-        # 判断两次密码是否一致
-        if password != password2:
-            return JsonResponse(data={"error": "两次输入的密码不一致", "status": 400})
-        # 判断手机号是否合法
-        if not re.match(r'^1[3-9]\d{9}$', mobile):
-            return JsonResponse(data={"error": "请输入正确的手机号码", "status": 400})
-        # 判断短信验证码是否输入正确
-        redis_conn = get_redis_connection('verify_codes')
-        sms_code_server = redis_conn.get('sms_%s' % mobile)
-        if sms_code_server is None:
-            return JsonResponse(data={"error": "短信验证码已失效", "status": 400})
-        if sms_code_client != sms_code_server.decode():
-            return JsonResponse(data={"error": "短信验证码有误", "status": 400})
         user = User.objects.get(mobile=mobile)
         user.password = password
         user.save()
@@ -175,38 +167,39 @@ def forget_password(request):
 
 def register(request):
     """实现用户注册"""
+    username = request.POST.get('username')
+    password = request.POST.get('password')
+    password2 = request.POST.get('password2')
+    mobile = request.POST.get('mobile')
+    sms_code_client = request.POST.get('sms_code')
+    openid = request.POST.get('openid')
+    # allow = request.POST.get('allow')
+    if not all([username, mobile, password, password2, openid]):
+        return JsonResponse(data={"error": "缺少必传参数", "status": 400})
+    # 判断密码是否是8-20个数字
+    if not re.match(r'^[0-9A-Za-z]{8,20}$', password):
+        return JsonResponse(data={"error": "请输入8-20位的密码", "status": 400})
+    # 判断用户名是否是1-20个字符
+    # if not re.match(r'^[a-zA-Z0-9_-]{1,20}$', username):
+    #     return JsonResponse(data={"error": "请输入1-20个字符的用户名", "status": 400})
+    # 判断两次密码是否一致
+    if password != password2:
+        return JsonResponse(data={"error": "两次输入的密码不一致", "status": 400})
+    # 判断手机号是否合法
+    if not re.match(r'^1[3-9]\d{9}$', mobile):
+        return JsonResponse(data={"error": "请输入正确的手机号码", "status": 400})
+    # 判断短信验证码是否输入正确
+    redis_conn = get_redis_connection('verify_codes')
+    sms_code_server = redis_conn.get('sms_%s' % mobile)
+    if sms_code_server is None:
+        return JsonResponse(data={"error": "短信验证码已失效", "status": 400})
+    if sms_code_client != sms_code_server.decode():
+        return JsonResponse(data={"error": "短信验证码有误", "status": 400})
+    # 判断是否勾选用户协议
+    # if allow != 'on':
+    #     return JsonResponse(data={"message": "请勾选用户协议", "status": 400})
     try:
-        username = request.POST.get('username')
-        password = request.POST.get('password')
-        password2 = request.POST.get('password2')
-        mobile = request.POST.get('mobile')
-        sms_code_client = request.POST.get('sms_code')
-        # allow = request.POST.get('allow')
-        if not all([username, mobile, password, password2]):
-            return JsonResponse(data={"error": "缺少必传参数", "status": 400})
-        # 判断密码是否是8-20个数字
-        if not re.match(r'^[0-9A-Za-z]{8,20}$', password):
-            return JsonResponse(data={"error": "请输入8-20位的密码", "status": 400})
-        # 判断用户名是否是5-20个字符
-        if not re.match(r'^[a-zA-Z0-9_-]{1,20}$', username):
-            return JsonResponse(data={"error": "请输入5-20个字符的用户名", "status": 400})
-        # 判断两次密码是否一致
-        if password != password2:
-            return JsonResponse(data={"error": "两次输入的密码不一致", "status": 400})
-        # 判断手机号是否合法
-        if not re.match(r'^1[3-9]\d{9}$', mobile):
-            return JsonResponse(data={"error": "请输入正确的手机号码", "status": 400})
-        # 判断短信验证码是否输入正确
-        redis_conn = get_redis_connection('verify_codes')
-        sms_code_server = redis_conn.get('sms_%s' % mobile)
-        if sms_code_server is None:
-            return JsonResponse(data={"error": "短信验证码已失效", "status": 400})
-        if sms_code_client != sms_code_server.decode():
-            return JsonResponse(data={"error": "短信验证码有误", "status": 400})
-        # 判断是否勾选用户协议
-        # if allow != 'on':
-        #     return JsonResponse(data={"message": "请勾选用户协议", "status": 400})
-        User.objects.create(username=username, mobile=mobile, password=password, )
+        User.objects.create(username=username, mobile=mobile, password=password, openid=openid)
         return JsonResponse(data={"message": "注册成功", "status": 200})
     except Exception as e:
         logger.error(e)

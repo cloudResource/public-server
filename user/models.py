@@ -9,6 +9,7 @@ class User(models.Model):
     mobile = models.CharField(max_length=32, null=True, unique=True, help_text="用户注册手机号")
     password = models.CharField(max_length=32, null=True, help_text="用户密码")
     role = models.CharField(max_length=32, default="普通用户")
+    openid = models.CharField(max_length=64, null=True, unique=True, help_text="微信唯一标识")
 
     class Meta:
         db_table = 'tb_user'

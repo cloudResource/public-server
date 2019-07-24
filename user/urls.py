@@ -19,7 +19,7 @@ from . import views
 urlpatterns = [
     url(r'^register$', views.register), # 用户注册
     url(r'^login$', views.enter), # 用户登录
-    url(r'^logout$', views.logout), # 用户登录
+    url(r'^logout$', views.logout), # 用户退出
     url(r'^info$', views.info), # 个人中心
     url(r'^sms_codes$', views.sms_codes), # 获取短信验证码
     url(r'^change_password$', views.change_password), # 修改密码

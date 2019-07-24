@@ -23,4 +23,5 @@ urlpatterns = [
     url(r'^get_classes$', views.get_classes),  # 查询所有班级
     url(r'^add_grade$', views.add_grade),  # 添加年级
     url(r'^add_class$', views.add_class),  # 添加班级
+    url(r'^get_projects$', views.get_projects),  # 查询项目信息
 ]

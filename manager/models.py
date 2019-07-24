@@ -5,6 +5,15 @@ from user.models import User
 
 # Create your models here.
 
+class Project(models.Model):
+    name = models.CharField(max_length=100, null=True, help_text="project_name")
+    app_id = models.CharField(max_length=100, null=True, help_text="app_id")
+    app_secret = models.CharField(max_length=100, null=True, help_text="app_secret")
+
+    class Meta:
+        db_table = "tb_project"
+
+
 class School(models.Model):
     school_name = models.CharField(max_length=64, null=True, help_text="学校名称")
     admin_user_id = models.OneToOneField(User, db_column="admin_user_id")
@@ -41,7 +50,7 @@ class Class(models.Model):
 
 
 class Equipment(models.Model):
-    use_teacher = models.ForeignKey(Grade, null=True, db_column="_id")
+    use_teacher = models.ForeignKey(Grade, null=True, db_column="use_teacher_id")
     equipment_url = models.CharField(max_length=100, null=True, help_text="设备地址")
     teacher_id = models.ForeignKey(Teacher, null=True, db_column="teacher_id")
     class_id = models.ForeignKey(Class, null=True, db_column="class_id")
