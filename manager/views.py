@@ -1,3 +1,5 @@
+import re
+
 from django.http import JsonResponse
 from django.shortcuts import render
 
@@ -6,13 +8,16 @@ from user.models import User
 import logging
 
 # Create your views here.
+from utils.decoration import check_login
 
 logger = logging.getLogger("django.request")
 
 
+@check_login("get_teachers")
 def get_teachers(request):
     """
     查询所有教师
+
     """
     role = request.session.get('role')
     admin_user_id = request.session.get('user_id')
@@ -40,9 +45,11 @@ def get_teachers(request):
         return JsonResponse(data={"error": "获取数据失败", "status": 400}, status=400)
 
 
+@check_login("add_teacher")
 def add_teacher(request):
     """
     添加教师
+
     """
     teacher_name = request.POST.get('teacher_name')
     mobile = request.POST.get('mobile')
@@ -66,18 +73,14 @@ def add_teacher(request):
         return JsonResponse(data={"error": "获取数据失败", "status": 400}, status=400)
 
 
+@check_login("del_teacher")
 def del_teacher(request):
     """
     删除教师
+
     """
     teacher_id = request.POST.get('teacher_id')
-    role = request.session.get('role')
     admin_user_id = request.session.get('user_id')
-    user_id = request.session.get('user_id')
-    if not user_id:
-        return JsonResponse(data={"error": "登录过期", "status": 401})
-    if role != "admin":
-        return JsonResponse(data={"error": "您无权操作", "status": 400})
     try:
         admin_school_obj = User.objects.get(id=admin_user_id).school
         teacher_school_obj = Teacher.objects.get(id=teacher_id).school_id
@@ -93,17 +96,13 @@ def del_teacher(request):
         return JsonResponse(data={"error": "获取数据失败", "status": 400}, status=400)
 
 
+@check_login("get_classes")
 def get_classes(request):
     """
     查询所有班级
+
     """
-    role = request.session.get('role')
     admin_user_id = request.session.get('user_id')
-    user_id = request.session.get('user_id')
-    if not user_id:
-        return JsonResponse(data={"error": "登录过期", "status": 401})
-    if role != "admin":
-        return JsonResponse(data={"error": "您无权操作", "status": 400})
     try:
         admin_school_obj = User.objects.get(id=admin_user_id).school
         grade_set = Grade.objects.filter(school_id=admin_school_obj)
@@ -124,9 +123,11 @@ def get_classes(request):
         return JsonResponse(data={"error": "添加失败", "status": 400}, status=400)
 
 
+@check_login("add_grade")
 def add_grade(request):
     """
     添加年级
+
     """
     role = request.session.get('role')
     admin_user_id = request.session.get('user_id')
@@ -145,9 +146,11 @@ def add_grade(request):
         return JsonResponse(data={"error": "添加失败", "status": 400}, status=400)
 
 
+@check_login("add_class")
 def add_class(request):
     """
     添加教室
+
     """
     class_name = request.POST.get('class_name')
     grade_id = request.POST.get('grade_id')
@@ -171,8 +174,8 @@ def add_class(request):
 def get_projects(request):
     """
     获取项目相关信息
+
     """
-    token = request.META.get("HTTP_TOKEN")
     try:
         project_set = Project.objects.all()
         project_list = []
@@ -189,4 +192,48 @@ def get_projects(request):
         return JsonResponse(data={"data": project_list, "status": 200})
     except Exception as e:
         logger.error(e)
-        return JsonResponse(data={"error": "添加失败", "status": 400}, status=400)
+        return JsonResponse(data={"error": "获取数据失败", "status": 400}, status=400)
+
+
+def login(request):
+    """
+    实现学校管理员登录
+
+    """
+    mobile = request.POST.get('mobile')
+    password = request.POST.get('password')
+    # remembered = request.POST.get('remembered')
+    # 校验参数
+    if not all([mobile, password]):
+        return JsonResponse(data={"error": "缺少必传参数", "status": 400})
+    if not re.match(r'^[a-zA-Z0-9_-]{5,20}$', mobile):
+        return JsonResponse(data={"error": "请输入正确的手机号", "status": 400})
+    try:
+        # 使用手机号查询用户是否存在，如果用户存在，再校验密码是否正确
+        user = User.objects.filter(mobile=mobile).first()
+        if user.password != password:
+            return JsonResponse(data={"error": "账号或密码错误", "status": 400})
+        role = user.role
+        user_name = user.username
+        user_id = user.id
+        # 状态保持
+        request.session['user_id'] = user_id
+        request.session['user_name'] = user_name
+        request.session['mobile'] = mobile
+        request.session['password'] = password
+        request.session["role"] = role
+        request.session.set_expiry(7200)
+        return JsonResponse(data={"data": {"user_name": user_name, "role": role, "mobile": mobile}, "status": 200},
+                            status=200)
+    except Exception as e:
+        logger.error(e)
+        return JsonResponse(data={"error": "登录失败", "status": 400}, status=400)
+
+
+def logout(request):
+    """
+    实现学校管理员退出
+
+    """
+    request.session.flush()
+    return JsonResponse(data={"message": "退出成功", "status": 200})

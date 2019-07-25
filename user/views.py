@@ -61,17 +61,21 @@ def logout(request):
 
 def add_label(request):
     """添加用户标签"""
+    token = request.META.get("HTTP_TOKEN", None)
+    if not token:
+        return JsonResponse(data={"error": "缺少token信息", "status": 400})
     label = request.POST.get('label')
-    user_id = request.session.get('user_id')
     # 校验参数
     if not label:
         return JsonResponse(data={"error": "缺少必传参数", "status": 400})
     try:
-        labels = Label.objects.filter(user_id=user_id)
+        user_obj = User.objects.filter(openid=token).first()
+        if not user_obj:
+            return JsonResponse(data={"error": "用户未注册", "status": 401})
+        labels = Label.objects.filter(user_id=user_obj.id)
         count = len(labels)
         if count >= 3:
             return JsonResponse(data={"error": "只能添加三个标签", "status": 400})
-        user_obj = User.objects.get(id=user_id)
         Label.objects.create(label=label, user_id=user_obj)
         return JsonResponse(data={"message": "添加用户标签成功", "status": 200})
     except Exception as e:
@@ -81,11 +85,13 @@ def add_label(request):
 
 def info(request):
     """个人中心"""
-    token = request.META.get("HTTP_TOKEN")
+    token = request.META.get("HTTP_TOKEN", None)
+    if not token:
+        return JsonResponse(data={"error": "缺少token信息", "status": 400})
     try:
         user = User.objects.filter(openid=token).first()
         if not user:
-            return JsonResponse(data={"message": "用户未注册", "status": 200})
+            return JsonResponse(data={"error": "用户未注册", "status": 401})
         label_set = user.label_set.all()
         label_list = []
         for label_obj in label_set:
@@ -168,23 +174,23 @@ def forget_password(request):
 def register(request):
     """实现用户注册"""
     username = request.POST.get('username')
-    password = request.POST.get('password')
-    password2 = request.POST.get('password2')
+    # password = request.POST.get('password')
+    # password2 = request.POST.get('password2')
     mobile = request.POST.get('mobile')
     sms_code_client = request.POST.get('sms_code')
     openid = request.POST.get('openid')
     # allow = request.POST.get('allow')
-    if not all([username, mobile, password, password2, openid]):
+    if not all([username, mobile, openid]):
         return JsonResponse(data={"error": "缺少必传参数", "status": 400})
     # 判断密码是否是8-20个数字
-    if not re.match(r'^[0-9A-Za-z]{8,20}$', password):
-        return JsonResponse(data={"error": "请输入8-20位的密码", "status": 400})
+    # if not re.match(r'^[0-9A-Za-z]{8,20}$', password):
+    #     return JsonResponse(data={"error": "请输入8-20位的密码", "status": 400})
     # 判断用户名是否是1-20个字符
     # if not re.match(r'^[a-zA-Z0-9_-]{1,20}$', username):
     #     return JsonResponse(data={"error": "请输入1-20个字符的用户名", "status": 400})
     # 判断两次密码是否一致
-    if password != password2:
-        return JsonResponse(data={"error": "两次输入的密码不一致", "status": 400})
+    # if password != password2:
+    #     return JsonResponse(data={"error": "两次输入的密码不一致", "status": 400})
     # 判断手机号是否合法
     if not re.match(r'^1[3-9]\d{9}$', mobile):
         return JsonResponse(data={"error": "请输入正确的手机号码", "status": 400})
@@ -199,7 +205,7 @@ def register(request):
     # if allow != 'on':
     #     return JsonResponse(data={"message": "请勾选用户协议", "status": 400})
     try:
-        User.objects.create(username=username, mobile=mobile, password=password, openid=openid)
+        User.objects.create(username=username, mobile=mobile, openid=openid)
         return JsonResponse(data={"message": "注册成功", "status": 200})
     except Exception as e:
         logger.error(e)

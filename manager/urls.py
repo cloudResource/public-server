@@ -24,4 +24,6 @@ urlpatterns = [
     url(r'^add_grade$', views.add_grade),  # 添加年级
     url(r'^add_class$', views.add_class),  # 添加班级
     url(r'^get_projects$', views.get_projects),  # 查询项目信息
+    url(r'^login$', views.login),  # 学校管理员登录
+    url(r'^logout$', views.logout),  # 学校管理员退出
 ]
