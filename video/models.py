@@ -2,6 +2,7 @@ from django.db import models
 
 # Create your models here.
 # from user.models import User
+from manager.models import Teacher
 from user.models import User
 
 
@@ -13,6 +14,7 @@ class Video(models.Model):
     status = models.BooleanField(default=False, help_text="视频的状态")
     # video_owner_id = models.OneToOneField(User, on_delete=models.CASCADE, db_column="video_owner_id")
     image_path = models.CharField(max_length=100, null=True, help_text="图片播放地址")
+    teacher_id = models.ForeignKey(Teacher, null=True, db_column="teacher_id")
 
     class Meta:
         db_table = "tb_video"

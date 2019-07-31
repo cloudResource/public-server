@@ -98,7 +98,9 @@ def list_video(request):
             video_dict["video_id"] = video.id
             video_dict["video_name"] = video.name
             video_dict["end_time"] = video.end_time
+            video_dict["image_path"] = video.image_path
             video_dict["video_status"] = video.status
+            video_dict["domain"] = video.teacher_id.school_id.domain
             video_dict["video_notes"] = note_list
             video_dict["video_moments"] = moment_list
             data["data"].append(video_dict)

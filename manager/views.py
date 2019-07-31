@@ -19,13 +19,7 @@ def get_teachers(request):
     查询所有教师
 
     """
-    role = request.session.get('role')
     admin_user_id = request.session.get('user_id')
-    user_id = request.session.get('user_id')
-    if not user_id:
-        return JsonResponse(data={"error": "登录过期", "status": 401})
-    if role != "admin":
-        return JsonResponse(data={"error": "您无权操作", "status": 400})
     try:
         school_obj = User.objects.get(id=admin_user_id).school
         teacher_set = Teacher.objects.filter(school_id=school_obj)
@@ -53,13 +47,7 @@ def add_teacher(request):
     """
     teacher_name = request.POST.get('teacher_name')
     mobile = request.POST.get('mobile')
-    role = request.session.get('role')
     admin_user_id = request.session.get('user_id')
-    user_id = request.session.get('user_id')
-    if not user_id:
-        return JsonResponse(data={"error": "登录过期", "status": 401})
-    if role != "admin":
-        return JsonResponse(data={"error": "您无权操作", "status": 400})
     try:
         school_obj = User.objects.get(id=admin_user_id).school
         user_obj = User.objects.get(mobile=mobile)
@@ -129,14 +117,8 @@ def add_grade(request):
     添加年级
 
     """
-    role = request.session.get('role')
     admin_user_id = request.session.get('user_id')
-    user_id = request.session.get('user_id')
     grade_name = request.POST.get('grade_name')
-    if not user_id:
-        return JsonResponse(data={"error": "登录过期", "status": 401})
-    if role != "admin":
-        return JsonResponse(data={"error": "您无权操作", "status": 400})
     try:
         admin_school_obj = User.objects.get(id=admin_user_id).school
         Grade.objects.create(school_id=admin_school_obj, grade_name=grade_name)
@@ -154,13 +136,7 @@ def add_class(request):
     """
     class_name = request.POST.get('class_name')
     grade_id = request.POST.get('grade_id')
-    role = request.session.get('role')
     admin_user_id = request.session.get('user_id')
-    user_id = request.session.get('user_id')
-    if not user_id:
-        return JsonResponse(data={"error": "登录过期", "status": 401})
-    if role != "admin":
-        return JsonResponse(data={"error": "您无权操作", "status": 400})
     try:
         admin_school_obj = User.objects.get(id=admin_user_id).school
         grade_obj = Grade.objects.get(id=grade_id)
@@ -223,8 +199,12 @@ def login(request):
         request.session['password'] = password
         request.session["role"] = role
         request.session.set_expiry(7200)
-        return JsonResponse(data={"data": {"user_name": user_name, "role": role, "mobile": mobile}, "status": 200},
-                            status=200)
+        return JsonResponse(
+            data={"data": {"user_name": user_name,
+                           "role": role,
+                           "mobile": mobile},
+                  "status": 200},
+            status=200)
     except Exception as e:
         logger.error(e)
         return JsonResponse(data={"error": "登录失败", "status": 400}, status=400)

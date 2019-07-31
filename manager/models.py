@@ -17,6 +17,7 @@ class Project(models.Model):
 class School(models.Model):
     school_name = models.CharField(max_length=64, null=True, help_text="学校名称")
     admin_user_id = models.OneToOneField(User, db_column="admin_user_id")
+    domain = models.CharField(max_length=64, null=True, help_text="学校域名")
 
     class Meta:
         db_table = "tb_school"
