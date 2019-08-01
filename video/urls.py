@@ -20,11 +20,8 @@ urlpatterns = [
     url(r'^start$', views.start_recording),  # 开始录制视频
     url(r'^stop$', views.stop_recording),  # 结束录制视频
     url(r'^list_video$', views.list_video),  # 列表查询所有视频
-    url(r'^video_address$', views.video_address),  # 视频播放地址
-    url(r'^cover_image$', views.cover_image),  # 获取封面图片
-    url(r'^note_image$', views.note_image),  # 获取版书图片
-    url(r'^moment_image$', views.moment_image),  # 获取精彩回看图片
     url(r'^list_comment$', views.list_comment),  # 获取所有评论
     url(r'^add_comment$', views.add_comment),  # 添加一条评论
     url(r'^video_state$', views.video_state),  # 查看视频上传状态
+    url(r'^add_video_label$', views.add_video_label),  # 添加视频标签
 ]

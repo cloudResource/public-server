@@ -14,6 +14,7 @@ from celery_tasks.sms.yuntongxun.sms import CCP
 from user import constants
 from celery_tasks.sms.tasks import send_sms_code
 from user.models import User, Label
+from utils.decoration import check_token
 
 logger = logging.getLogger("django.request")
 
@@ -59,11 +60,9 @@ def logout(request):
     return JsonResponse(data={"message": "退出成功", "status": 200})
 
 
-def add_label(request):
+@check_token("add_label")
+def add_label(request, token):
     """添加用户标签"""
-    token = request.META.get("HTTP_TOKEN", None)
-    if not token:
-        return JsonResponse(data={"error": "缺少token信息", "status": 400})
     label = request.POST.get('label')
     # 校验参数
     if not label:
@@ -75,7 +74,7 @@ def add_label(request):
         labels = Label.objects.filter(user_id=user_obj.id)
         count = len(labels)
         if count >= 3:
-            return JsonResponse(data={"error": "只能添加三个标签", "status": 400})
+            return JsonResponse(data={"error": "只能添加三个用户标签", "status": 400})
         Label.objects.create(label=label, user_id=user_obj)
         return JsonResponse(data={"message": "添加用户标签成功", "status": 200})
     except Exception as e:
@@ -83,11 +82,33 @@ def add_label(request):
         return JsonResponse(data={"error": "添加用户标签失败", "status": 400}, status=400)
 
 
-def info(request):
+@check_token("del_label")
+def del_label(request, token):
+    """
+    删除用户标签
+
+    """
+    label_id = request.POST.get('label_id')
+    # 校验参数
+    if not label_id:
+        return JsonResponse(data={"error": "缺少必传参数", "status": 400})
+    try:
+        label_obj = Label.objects.filter(id=label_id).first()
+        if not label_obj:
+            return JsonResponse(data={"error": "标签不存在", "status": 400})
+        openid = label_obj.user_id.openid
+        if token != openid:
+            return JsonResponse(data={"error": "无权操作", "status": 400})
+        Label.objects.filter(id=label_id).delete()
+        return JsonResponse(data={"message": "删除用户标签成功", "status": 200})
+    except Exception as e:
+        logger.error(e)
+        return JsonResponse(data={"error": "删除用户标签失败", "status": 400}, status=400)
+
+
+@check_token("info")
+def info(request, token):
     """个人中心"""
-    token = request.META.get("HTTP_TOKEN", None)
-    if not token:
-        return JsonResponse(data={"error": "缺少token信息", "status": 400})
     try:
         user = User.objects.filter(openid=token).first()
         if not user:
@@ -95,7 +116,10 @@ def info(request):
         label_set = user.label_set.all()
         label_list = []
         for label_obj in label_set:
-            label_list.append(label_obj.label)
+            label_dict = dict()
+            label_dict["id"] = label_obj.id
+            label_dict["label"] = label_obj.label
+            label_list.append(label_dict)
         mobile = user.mobile
         user_name = user.username
         role = user.role
@@ -172,14 +196,16 @@ def forget_password(request):
 
 
 def register(request):
-    """实现用户注册"""
+    """
+    实现用户注册
+
+    """
     username = request.POST.get('username')
     # password = request.POST.get('password')
     # password2 = request.POST.get('password2')
     mobile = request.POST.get('mobile')
     sms_code_client = request.POST.get('sms_code')
     openid = request.POST.get('openid')
-    # allow = request.POST.get('allow')
     if not all([username, mobile, openid]):
         return JsonResponse(data={"error": "缺少必传参数", "status": 400})
     # 判断密码是否是8-20个数字
@@ -201,9 +227,6 @@ def register(request):
         return JsonResponse(data={"error": "短信验证码已失效", "status": 400})
     if sms_code_client != sms_code_server.decode():
         return JsonResponse(data={"error": "短信验证码有误", "status": 400})
-    # 判断是否勾选用户协议
-    # if allow != 'on':
-    #     return JsonResponse(data={"message": "请勾选用户协议", "status": 400})
     try:
         User.objects.create(username=username, mobile=mobile, openid=openid)
         return JsonResponse(data={"message": "注册成功", "status": 200})
@@ -246,3 +269,25 @@ def sms_codes(request):
     pl.execute()
 
     return JsonResponse(data={"message": "发送成功", "status": 200})
+
+
+@check_token("rename")
+def rename(request, token):
+    """
+    修改用户名
+    :param request:
+    :return:
+    """
+    user_name = request.POST.get('user_name')
+    if not user_name:
+        return JsonResponse(data={"error": "缺少必传参数", "status": 400})
+    try:
+        user_obj = User.objects.filter(openid=token).first()
+        if not user_obj:
+            return JsonResponse(data={"error": "用户未注册", "status": 401})
+        user_obj.username = user_name
+        user_obj.save()
+        return JsonResponse(data={"message": "保存成功", "status": 200})
+    except Exception as e:
+        logger.error(e)
+        return JsonResponse(data={"error": "添加用户标签失败", "status": 400}, status=400)

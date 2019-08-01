@@ -1,5 +1,7 @@
 from django.http import JsonResponse
 
+from user.models import User
+
 
 def check_login(action):
     """
@@ -22,3 +24,21 @@ def check_login(action):
 
     return check_data
 
+
+def check_token(action):
+    """
+    校验用户是否注册
+
+    """
+
+    def check_data(func):
+        def wrapped(request, *args, **kwargs):
+            token = request.META.get("HTTP_TOKEN", None)
+            if not token:
+                return JsonResponse(data={"error": "缺少token信息", "status": 400})
+
+            return func(request, token, *args, **kwargs)
+
+        return wrapped
+
+    return check_data

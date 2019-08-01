@@ -25,4 +25,6 @@ urlpatterns = [
     url(r'^change_password$', views.change_password), # 修改密码
     url(r'^forget_password$', views.forget_password), # 忘记密码
     url(r'^add_label$', views.add_label), # 添加用户标签
+    url(r'^del_label$', views.del_label), # 删除用户标签
+    url(r'^rename$', views.rename), # 修改用户名
 ]
