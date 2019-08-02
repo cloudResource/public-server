@@ -24,13 +24,20 @@ class School(models.Model):
 
 
 class Teacher(models.Model):
-    name = models.CharField(max_length=16, null=True, help_text="教师名字")
     rank = models.CharField(max_length=16, null=True, help_text="教师等级")
-    user_id = models.OneToOneField(User, on_delete=models.CASCADE, blank=True, null=True, db_column="user_id")
     school_id = models.ForeignKey(School, null=True, db_column="school_id")
+    user_id = models.OneToOneField(User, on_delete=models.CASCADE, blank=True, null=True, db_column="user_id")
 
     class Meta:
         db_table = "tb_teacher"
+
+
+class RelationUser(models.Model):
+    user_id = models.ForeignKey(User, db_column="user_id")
+    teacher_id = models.ForeignKey(Teacher, db_column="teacher_id")
+
+    class Meta:
+        db_table = "tb_relation_user"
 
 
 class Grade(models.Model):

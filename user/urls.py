@@ -17,14 +17,16 @@ from django.conf.urls import url
 from . import views
 
 urlpatterns = [
-    url(r'^register$', views.register), # 用户注册
-    url(r'^login$', views.enter), # 用户登录
-    url(r'^logout$', views.logout), # 用户退出
-    url(r'^info$', views.info), # 个人中心
-    url(r'^sms_codes$', views.sms_codes), # 获取短信验证码
-    url(r'^change_password$', views.change_password), # 修改密码
-    url(r'^forget_password$', views.forget_password), # 忘记密码
-    url(r'^add_label$', views.add_label), # 添加用户标签
-    url(r'^del_label$', views.del_label), # 删除用户标签
-    url(r'^rename$', views.rename), # 修改用户名
+    url(r'^register$', views.register),  # 用户注册
+    url(r'^login$', views.enter),  # 用户登录
+    url(r'^logout$', views.logout),  # 用户退出
+    url(r'^info$', views.info),  # 个人中心
+    url(r'^sms_codes$', views.sms_codes),  # 获取短信验证码
+    url(r'^change_password$', views.change_password),  # 修改密码
+    url(r'^forget_password$', views.forget_password),  # 忘记密码
+    url(r'^add_label$', views.add_label),  # 添加用户标签
+    url(r'^del_label$', views.del_label),  # 删除用户标签
+    url(r'^rename$', views.rename),  # 修改用户名
+    url(r'^attention_teacher$', views.attention_teacher),  # 关注教师
+    url(r'^get_attention_teachers$', views.get_attention_teachers),  # 关注教师
 ]

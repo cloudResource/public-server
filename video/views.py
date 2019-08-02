@@ -15,13 +15,13 @@ from wsgiref.util import FileWrapper
 
 from video.models import Video, Note, Moment, VideoLabel
 
-logger = logging.getLogger("django.request")
+logger = logging.getLogger("django")
 
 
 def start_recording(request):
     """
     开始录制视频
-    :param requests:
+    :param request:
     :return:
     """
     try:
@@ -50,7 +50,7 @@ def start_recording(request):
 def stop_recording(request):
     """
     结束录制视频
-    :param requests:
+    :param request:
     :return:
     """
     try:
@@ -94,21 +94,41 @@ def list_video(request, token):
             video_dict = {}
             note_list = []
             moment_list = []
-            notes_obj = video.note_set.all()
-            moment_obj = video.moment_set.all()
-            for note in notes_obj:
-                note_list.append({"note_id": note.id, "note_time": note.note_time, "note_path": note.note_path})
-            for moment in moment_obj:
+            label_list = []
+            notes_set = video.note_set.all()
+            moment_set = video.moment_set.all()
+            video_label_set = video.videolabel_set.all()
+            video_label_number = len(video_label_set)
+            if video_label_number > 0:
+                for video_label_obj in video_label_set:
+                    label_list.append({"label": video_label_obj.video_label})
+            else:
+                label_set = video.teacher_id.user_id.label_set.all()
+                for label_obj in label_set:
+                    label_list.append({"label": label_obj.label})
+            for note_obj in notes_set:
+                note_list.append({"note_id": note_obj.id,
+                                  "note_time": note_obj.note_time,
+                                  "note_path": note_obj.note_path})
+            for moment_obj in moment_set:
                 moment_list.append(
-                    {"moment_id": moment.id, "moment_time": moment.moment_time, "moment_path": moment.moment_path})
+                    {"moment_id": moment_obj.id,
+                     "moment_time": moment_obj.moment_time,
+                     "moment_path": moment_obj.moment_path})
+            teacher_obj = video.teacher_id
+            teacher_id = teacher_obj.id
+            teacher_name = teacher_obj.user_id.username
+            teacher_dict = {"teacher_id": teacher_id, "teacher_name": teacher_name}
             video_dict["video_id"] = video.id
             video_dict["video_name"] = video.name
+            video_dict["teacher_data"] = teacher_dict
             video_dict["end_time"] = video.end_time
             video_dict["image_path"] = video.image_path
             video_dict["video_status"] = video.status
             video_dict["domain"] = video.teacher_id.school_id.domain
             video_dict["video_notes"] = note_list
             video_dict["video_moments"] = moment_list
+            video_dict["label_list"] = label_list
             data["data"].append(video_dict)
         data["status"] = 200
         return JsonResponse(data=data)
@@ -195,5 +215,3 @@ def add_video_label(request, token):
     except Exception as e:
         logger.error(e)
         return JsonResponse(data={"message": "获取数据失败", "status": 400})
-
-

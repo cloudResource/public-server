@@ -11,12 +11,13 @@ from django_redis import get_redis_connection
 from pymysql import DatabaseError
 
 from celery_tasks.sms.yuntongxun.sms import CCP
+from manager.models import Teacher, RelationUser
 from user import constants
 from celery_tasks.sms.tasks import send_sms_code
 from user.models import User, Label
 from utils.decoration import check_token
 
-logger = logging.getLogger("django.request")
+logger = logging.getLogger("django")
 
 
 def enter(request):
@@ -275,8 +276,7 @@ def sms_codes(request):
 def rename(request, token):
     """
     修改用户名
-    :param request:
-    :return:
+
     """
     user_name = request.POST.get('user_name')
     if not user_name:
@@ -291,3 +291,49 @@ def rename(request, token):
     except Exception as e:
         logger.error(e)
         return JsonResponse(data={"error": "添加用户标签失败", "status": 400}, status=400)
+
+
+@check_token("attention_teacher")
+def attention_teacher(request, token):
+    """
+    关注教师
+
+    """
+    teacher_id = request.POST.get('teacher_id')
+    if not teacher_id:
+        return JsonResponse(data={"error": "缺少必传参数", "status": 400})
+    try:
+        user_obj = User.objects.filter(openid=token).first()
+        if not user_obj:
+            return JsonResponse(data={"error": "用户未注册", "status": 401})
+        teacher_obj = Teacher.objects.filter(id=teacher_id).first()
+        if not teacher_obj:
+            return JsonResponse(data={"error": "该老师不存在", "status": 400})
+        RelationUser.objects.create(user_id=user_obj, teacher_id=teacher_obj)
+        return JsonResponse(data={"message": "关注教师成功", "status": 200})
+    except Exception as e:
+        logger.error(e)
+        return JsonResponse(data={"error": "关注教师失败", "status": 400}, status=400)
+
+
+@check_token("get_attention_teachers")
+def get_attention_teachers(request, token):
+    """
+    查看关注教师
+
+    """
+    try:
+        user_obj = User.objects.filter(openid=token).first()
+        if not user_obj:
+            return JsonResponse(data={"error": "用户未注册", "status": 401})
+        teacher_set = RelationUser.objects.filter(user_id=user_obj)
+        teacher_list = []
+        for teacher_obj in teacher_set:
+            user_id = teacher_obj.teacher_id.user_id.id
+            user_name = teacher_obj.teacher_id.user_id.username
+            teacher_dict = {"user_id": user_id, "user_name": user_name}
+            teacher_list.append(teacher_dict)
+        return JsonResponse(data={"data": {"teacher_list": teacher_list}, "status": 200})
+    except Exception as e:
+        logger.error(e)
+        return JsonResponse(data={"error": "关注教师失败", "status": 400}, status=400)

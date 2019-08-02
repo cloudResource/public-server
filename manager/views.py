@@ -10,7 +10,7 @@ import logging
 # Create your views here.
 from utils.decoration import check_login
 
-logger = logging.getLogger("django.request")
+logger = logging.getLogger("django")
 
 
 @check_login("get_teachers")
@@ -27,7 +27,7 @@ def get_teachers(request):
         teacher_list = []
         for teacher_obj in teacher_set:
             teacher_id = teacher_obj.id
-            teacher_name = teacher_obj.name
+            teacher_name = teacher_obj.user_id.username
             teacher_mobile = teacher_obj.user_id.mobile
             teacher_dict = {"teacher_id": teacher_id, "teacher_name": teacher_name, "teacher_mobile": teacher_mobile}
             teacher_list.append(teacher_dict)
@@ -51,7 +51,10 @@ def add_teacher(request):
     try:
         school_obj = User.objects.get(id=admin_user_id).school
         user_obj = User.objects.get(mobile=mobile)
-        Teacher.objects.create(school_id=school_obj, name=teacher_name, user_id=user_obj)
+        user_obj.username = teacher_name
+        user_obj.role = "teacher"
+        user_obj.save()
+        Teacher.objects.create(school_id=school_obj, user_id=user_obj)
         return JsonResponse(data={"message": "添加成功", "status": 200})
     except Exception as e:
         logger.error(e)
@@ -187,8 +190,10 @@ def login(request):
     try:
         # 使用手机号查询用户是否存在，如果用户存在，再校验密码是否正确
         user = User.objects.filter(mobile=mobile).first()
+        if not user:
+            return JsonResponse(data={"error": "账号不存在", "status": 400})
         if user.password != password:
-            return JsonResponse(data={"error": "账号或密码错误", "status": 400})
+            return JsonResponse(data={"error": "密码错误", "status": 400})
         role = user.role
         user_name = user.username
         user_id = user.id
