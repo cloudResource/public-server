@@ -4,6 +4,7 @@ from django.http import JsonResponse, FileResponse, request, StreamingHttpRespon
 from django.shortcuts import render
 from celery_tasks.video.tasks import save_video
 # Create your views here.
+from manager.models import RelationUser
 from user.models import User
 from utils.decoration import check_token
 from video.control import *
@@ -79,10 +80,11 @@ def stop_recording(request):
 
 
 @check_token("list_video")
-def list_video(request, token):
+def list_video(request, token, *args, **kwargs):
     """
     查看所有视频信息
-
+    :param request:
+    :return:
     """
     data = {"data": []}
     try:
@@ -91,10 +93,10 @@ def list_video(request, token):
             return JsonResponse(data={"error": "用户未注册", "status": 401})
         videos_obj = Video.objects.all()
         for video in videos_obj:
-            video_dict = {}
-            note_list = []
-            moment_list = []
-            label_list = []
+            video_dict = dict()
+            note_list = list()
+            moment_list = list()
+            label_list = list()
             notes_set = video.note_set.all()
             moment_set = video.moment_set.all()
             video_label_set = video.videolabel_set.all()
@@ -187,10 +189,14 @@ def video_state(request):
 
 
 @check_token("add_video_label")
-def add_video_label(request, token):
+def add_video_label(request, token, *args, **kwargs):
     """
     添加视频标签
-
+    :param request:
+    :param token: 用户验证，唯一标识
+    :param args:
+    :param kwargs:
+    :return:
     """
     video_id = request.POST.get('video_id')
     video_label = request.POST.get('video_label')
@@ -212,6 +218,71 @@ def add_video_label(request, token):
             return JsonResponse(data={"error": "只能添加三个视频标签", "status": 400})
         VideoLabel.objects.create(video_label=video_label, video_id=video_obj)
         return JsonResponse(data={"message": "添加用户标签成功", "status": 200})
+    except Exception as e:
+        logger.error(e)
+        return JsonResponse(data={"message": "获取数据失败", "status": 400})
+
+
+@check_token("attention_videos")
+def attention_videos(request, token, *args, **kwargs):
+    """
+    获取关注教师的视频
+    :param request:
+    :param token: 用户验证，唯一标识
+    :param args:
+    :param kwargs:
+    :return:
+    """
+    data = {"data": []}
+    try:
+        user_obj = User.objects.filter(openid=token).first()
+        if not user_obj:
+            return JsonResponse(data={"error": "用户未注册", "status": 401})
+        teacher_set = RelationUser.objects.filter(user_id=user_obj)
+        for teacher_obj in teacher_set:
+            video_set = Video.objects.filter(teacher_id=teacher_obj.teacher_id)
+            for video_obj in video_set:
+                video_dict = dict()
+                note_list = list()
+                moment_list = list()
+                label_list = list()
+                notes_set = video_obj.note_set.all()
+                moment_set = video_obj.moment_set.all()
+                video_label_set = video_obj.videolabel_set.all()
+                video_label_number = len(video_label_set)
+                if video_label_number > 0:
+                    for video_label_obj in video_label_set:
+                        label_list.append({"label": video_label_obj.video_label})
+                else:
+                    label_set = video_obj.teacher_id.user_id.label_set.all()
+                    for label_obj in label_set:
+                        label_list.append({"label": label_obj.label})
+                for note_obj in notes_set:
+                    note_list.append({"note_id": note_obj.id,
+                                      "note_time": note_obj.note_time,
+                                      "note_path": note_obj.note_path})
+                for moment_obj in moment_set:
+                    moment_list.append(
+                        {"moment_id": moment_obj.id,
+                         "moment_time": moment_obj.moment_time,
+                         "moment_path": moment_obj.moment_path})
+                teacher_obj = video_obj.teacher_id
+                teacher_id = teacher_obj.id
+                teacher_name = teacher_obj.user_id.username
+                teacher_dict = {"teacher_id": teacher_id, "teacher_name": teacher_name}
+                video_dict["video_id"] = video_obj.id
+                video_dict["video_name"] = video_obj.name
+                video_dict["teacher_data"] = teacher_dict
+                video_dict["end_time"] = video_obj.end_time
+                video_dict["image_path"] = video_obj.image_path
+                video_dict["video_status"] = video_obj.status
+                video_dict["domain"] = video_obj.teacher_id.school_id.domain
+                video_dict["video_notes"] = note_list
+                video_dict["video_moments"] = moment_list
+                video_dict["label_list"] = label_list
+                data["data"].append(video_dict)
+        data["status"] = 200
+        return JsonResponse(data=data)
     except Exception as e:
         logger.error(e)
         return JsonResponse(data={"message": "获取数据失败", "status": 400})

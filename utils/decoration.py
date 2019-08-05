@@ -5,6 +5,7 @@ from user.models import User
 
 def check_login(action):
     """
+    学校管理员PC端
     校验用户状态装饰器
 
     """
@@ -27,7 +28,7 @@ def check_login(action):
 
 def check_token(action):
     """
-    校验用户是否注册
+    微信小程序校验用户是否注册
 
     """
 

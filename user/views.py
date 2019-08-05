@@ -1,28 +1,30 @@
 import random
 import re
 
-from django.contrib.auth import login, authenticate
 from django.http import JsonResponse
-from django.shortcuts import render
 import logging
 
-# Create your views here.
 from django_redis import get_redis_connection
-from pymysql import DatabaseError
 
-from celery_tasks.sms.yuntongxun.sms import CCP
 from manager.models import Teacher, RelationUser
 from user import constants
 from celery_tasks.sms.tasks import send_sms_code
 from user.models import User, Label
 from utils.decoration import check_token
 
+# Create your views here.
+
 logger = logging.getLogger("django")
 
 
-def enter(request):
-    """实现用户登录逻辑"""
-    # 接收参数
+def enter(request, *args, **kwargs):
+    """
+    用户登录
+    :param request:
+    :param args:
+    :param kwargs:
+    :return:
+    """
     mobile = request.POST.get('mobile')
     password = request.POST.get('password')
     # remembered = request.POST.get('remembered')
@@ -55,15 +57,28 @@ def enter(request):
         return JsonResponse(data={"error": "登录失败", "status": 400}, status=400)
 
 
-def logout(request):
-    """实现用户退出"""
+def logout(request, *args, **kwargs):
+    """
+    实现用户退出
+    :param request:
+    :param args:
+    :param kwargs:
+    :return:
+    """
     request.session.flush()
     return JsonResponse(data={"message": "退出成功", "status": 200})
 
 
 @check_token("add_label")
-def add_label(request, token):
-    """添加用户标签"""
+def add_label(request, token, *args, **kwargs):
+    """
+    添加用户标签
+    :param request:
+    :param token: 用户验证，唯一标识
+    :param args:
+    :param kwargs:
+    :return:
+    """
     label = request.POST.get('label')
     # 校验参数
     if not label:
@@ -84,10 +99,14 @@ def add_label(request, token):
 
 
 @check_token("del_label")
-def del_label(request, token):
+def del_label(request, token, *args, **kwargs):
     """
     删除用户标签
-
+    :param request:
+    :param token: 用户验证，唯一标识
+    :param args:
+    :param kwargs:
+    :return:
     """
     label_id = request.POST.get('label_id')
     # 校验参数
@@ -108,8 +127,15 @@ def del_label(request, token):
 
 
 @check_token("info")
-def info(request, token):
-    """个人中心"""
+def info(request, token, *args, **kwargs):
+    """
+    个人中心
+    :param request:
+    :param token: 用户验证，唯一标识
+    :param args:
+    :param kwargs:
+    :return:
+    """
     try:
         user = User.objects.filter(openid=token).first()
         if not user:
@@ -131,8 +157,14 @@ def info(request, token):
         return JsonResponse(data={"error": "获取数据失败", "status": 400}, status=400)
 
 
-def change_password(request):
-    """修改密码"""
+def change_password(request, *args, **kwargs):
+    """
+    修改密码
+    :param request:
+    :param args:
+    :param kwargs:
+    :return:
+    """
     old_password = request.POST.get('old_password')
     new_password = request.POST.get('new_password')
     new_password2 = request.POST.get('new_password2')
@@ -159,8 +191,14 @@ def change_password(request):
         return JsonResponse(data={"error": "修改密码失败", "status": 400}, status=400)
 
 
-def forget_password(request):
-    """忘记密码"""
+def forget_password(request, *args, **kwargs):
+    """
+    忘记密码
+    :param request:
+    :param args:
+    :param kwargs:
+    :return:
+    """
     mobile = request.POST.get('mobile')
     sms_code_client = request.POST.get('sms_code')
     password = request.POST.get('password')
@@ -196,10 +234,13 @@ def forget_password(request):
         return JsonResponse(data={"error": "修改密码失败", "status": 400}, status=400)
 
 
-def register(request):
+def register(request, *args, **kwargs):
     """
     实现用户注册
-
+    :param request:
+    :param args:
+    :param kwargs:
+    :return:
     """
     username = request.POST.get('username')
     # password = request.POST.get('password')
@@ -241,10 +282,12 @@ def register(request):
         return JsonResponse(data={"error": "注册失败", "status": 400}, status=400)
 
 
-def sms_codes(request):
+def sms_codes(request, *args, **kwargs):
     """
     发送短信验证码
     :param request:
+    :param args:
+    :param kwargs:
     :return:
     """
     mobile = request.GET.get('mobile')
@@ -273,10 +316,14 @@ def sms_codes(request):
 
 
 @check_token("rename")
-def rename(request, token):
+def rename(request, token, *args, **kwargs):
     """
     修改用户名
-
+    :param request:
+    :param token: 用户验证，唯一标识
+    :param args:
+    :param kwargs:
+    :return:
     """
     user_name = request.POST.get('user_name')
     if not user_name:
@@ -294,10 +341,14 @@ def rename(request, token):
 
 
 @check_token("attention_teacher")
-def attention_teacher(request, token):
+def attention_teacher(request, token, *args, **kwargs):
     """
     关注教师
-
+    :param request:
+    :param token: 用户验证，唯一标识
+    :param args:
+    :param kwargs:
+    :return:
     """
     teacher_id = request.POST.get('teacher_id')
     if not teacher_id:
@@ -317,10 +368,14 @@ def attention_teacher(request, token):
 
 
 @check_token("get_attention_teachers")
-def get_attention_teachers(request, token):
+def get_attention_teachers(request, token, *args, **kwargs):
     """
     查看关注教师
-
+    :param request:
+    :param token: 用户验证，唯一标识
+    :param args:
+    :param kwargs:
+    :return:
     """
     try:
         user_obj = User.objects.filter(openid=token).first()
@@ -337,3 +392,44 @@ def get_attention_teachers(request, token):
     except Exception as e:
         logger.error(e)
         return JsonResponse(data={"error": "关注教师失败", "status": 400}, status=400)
+
+
+@check_token("get_teachers_data")
+def get_teacher_data(request, token, *args, **kwargs):
+    """
+    获取教师信息
+    :param request:
+    :param token: 用户验证，唯一标识
+    :param args:
+    :param kwargs:
+    :return:
+    """
+    uuid = kwargs.get("uuid")
+    if not uuid:
+        return JsonResponse(data={"error": "缺少必传参数", "status": 400})
+    try:
+        user_obj = User.objects.filter(openid=token).first()
+        if not user_obj:
+            return JsonResponse(data={"error": "用户未注册", "status": 401})
+        teacher_obj = Teacher.objects.filter(id=uuid).first()
+        if not teacher_obj:
+            return JsonResponse(data={"error": "该老师不存在", "status": 400})
+        data = dict()
+        label_list = list()
+        video_list = list()
+        for label_obj in teacher_obj.user_id.label_set.all():
+            label_list.append({"label": label_obj.label})
+        for video_obj in teacher_obj.video_set.all():
+            video_list.append({"name": video_obj.name,
+                               "is_delete": video_obj.is_delete,
+                               "status": video_obj.status,
+                               "image_path": video_obj.image_path,
+                               "end_time": video_obj.end_time})
+        data["name"] = teacher_obj.user_id.username
+        data["label"] = label_list
+        data["video"] = video_list
+        return JsonResponse(data={"data": data, "status": 200})
+
+    except Exception as e:
+        logger.error(e)
+        return JsonResponse(data={"error": "获取教师信息失败", "status": 400}, status=400)

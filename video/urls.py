@@ -24,4 +24,5 @@ urlpatterns = [
     url(r'^add_comment$', views.add_comment),  # 添加一条评论
     url(r'^video_state$', views.video_state),  # 查看视频上传状态
     url(r'^add_video_label$', views.add_video_label),  # 添加视频标签
+    url(r'^attention_videos/$', views.attention_videos),  # 获取关注教师的视频
 ]

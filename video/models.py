@@ -12,7 +12,6 @@ class Video(models.Model):
     size = models.IntegerField(help_text="视频文件大小")
     is_delete = models.BooleanField(default=False, help_text="视频的逻辑删除")
     status = models.BooleanField(default=False, help_text="视频的状态")
-    # video_owner_id = models.OneToOneField(User, on_delete=models.CASCADE, db_column="video_owner_id")
     image_path = models.CharField(max_length=100, null=True, help_text="图片播放地址")
     teacher_id = models.ForeignKey(Teacher, null=True, db_column="teacher_id")
 
