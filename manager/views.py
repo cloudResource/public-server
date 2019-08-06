@@ -1,13 +1,12 @@
 import re
 
 from django.http import JsonResponse
-from django.shortcuts import render
 
 from manager.models import Teacher, Grade, Class, Project
 from user.models import User
 import logging
-
 # Create your views here.
+
 from utils.decoration import check_login
 
 logger = logging.getLogger("django")

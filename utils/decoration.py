@@ -1,7 +1,5 @@
 from django.http import JsonResponse
 
-from user.models import User
-
 
 def check_login(action):
     """

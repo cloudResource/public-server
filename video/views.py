@@ -1,7 +1,4 @@
-from os import path
-
-from django.http import JsonResponse, FileResponse, request, StreamingHttpResponse, HttpResponse
-from django.shortcuts import render
+from django.http import JsonResponse
 from celery_tasks.video.tasks import save_video
 # Create your views here.
 from manager.models import RelationUser
@@ -9,12 +6,7 @@ from user.models import User
 from utils.decoration import check_token
 from video.control import *
 import logging
-import os
-import re
-import mimetypes
-from wsgiref.util import FileWrapper
-
-from video.models import Video, Note, Moment, VideoLabel
+from video.models import Video
 
 logger = logging.getLogger("django")
 
@@ -99,15 +91,9 @@ def list_video(request, token, *args, **kwargs):
             label_list = list()
             notes_set = video.note_set.all()
             moment_set = video.moment_set.all()
-            video_label_set = video.videolabel_set.all()
-            video_label_number = len(video_label_set)
-            if video_label_number > 0:
-                for video_label_obj in video_label_set:
-                    label_list.append({"label": video_label_obj.video_label})
-            else:
-                label_set = video.teacher_id.user_id.label_set.all()
-                for label_obj in label_set:
-                    label_list.append({"label": label_obj.label})
+            label_set = video.teacher_id.user_id.label_set.all()
+            for label_obj in label_set:
+                label_list.append({"label": label_obj.label})
             for note_obj in notes_set:
                 note_list.append({"note_id": note_obj.id,
                                   "note_time": note_obj.note_time,
@@ -120,9 +106,13 @@ def list_video(request, token, *args, **kwargs):
             teacher_obj = video.teacher_id
             teacher_id = teacher_obj.id
             teacher_name = teacher_obj.user_id.username
-            teacher_dict = {"teacher_id": teacher_id, "teacher_name": teacher_name}
+            teacher_school = teacher_obj.school_id.school_name
+            teacher_dict = {"teacher_id": teacher_id,
+                            "teacher_name": teacher_name,
+                            "teacher_school": teacher_school}
             video_dict["video_id"] = video.id
-            video_dict["video_name"] = video.name
+            video_dict["video_name"] = video.video_name
+            video_dict["file_path"] = video.file_path
             video_dict["teacher_data"] = teacher_dict
             video_dict["end_time"] = video.end_time
             video_dict["image_path"] = video.image_path
@@ -188,19 +178,19 @@ def video_state(request):
     pass
 
 
-@check_token("add_video_label")
-def add_video_label(request, token, *args, **kwargs):
+@check_token("change_video_name")
+def change_video_name(request, token, *args, **kwargs):
     """
-    添加视频标签
+    更改视频名字
     :param request:
     :param token: 用户验证，唯一标识
     :param args:
     :param kwargs:
     :return:
     """
+    video_name = request.POST.get('video_name')
     video_id = request.POST.get('video_id')
-    video_label = request.POST.get('video_label')
-    if not all([video_id, video_label]):
+    if not all([video_name, video_id]):
         return JsonResponse(data={"error": "缺少必传参数", "status": 400})
     try:
         user_obj = User.objects.filter(openid=token).first()
@@ -209,18 +199,15 @@ def add_video_label(request, token, *args, **kwargs):
         video_obj = Video.objects.filter(id=video_id).first()
         if not video_obj:
             return JsonResponse(data={"error": "视频不存在", "status": 400})
-        teacher_openid = video_obj.teacher_id.user_id.openid
-        if token != teacher_openid:
+        openid = video_obj.teacher_id.user_id.openid
+        if openid != token:
             return JsonResponse(data={"error": "无权操作", "status": 400})
-        video_label_set = VideoLabel.objects.filter(video_id=video_obj.id)
-        count = len(video_label_set)
-        if count >= 3:
-            return JsonResponse(data={"error": "只能添加三个视频标签", "status": 400})
-        VideoLabel.objects.create(video_label=video_label, video_id=video_obj)
-        return JsonResponse(data={"message": "添加用户标签成功", "status": 200})
+        video_obj.video_name = video_name
+        video_obj.save()
+        return JsonResponse(data={"message": "保存成功", "status": 200})
     except Exception as e:
         logger.error(e)
-        return JsonResponse(data={"message": "获取数据失败", "status": 400})
+        return JsonResponse(data={"error": "添加用户标签失败", "status": 400}, status=400)
 
 
 @check_token("attention_videos")
@@ -248,15 +235,9 @@ def attention_videos(request, token, *args, **kwargs):
                 label_list = list()
                 notes_set = video_obj.note_set.all()
                 moment_set = video_obj.moment_set.all()
-                video_label_set = video_obj.videolabel_set.all()
-                video_label_number = len(video_label_set)
-                if video_label_number > 0:
-                    for video_label_obj in video_label_set:
-                        label_list.append({"label": video_label_obj.video_label})
-                else:
-                    label_set = video_obj.teacher_id.user_id.label_set.all()
-                    for label_obj in label_set:
-                        label_list.append({"label": label_obj.label})
+                label_set = video_obj.teacher_id.user_id.label_set.all()
+                for label_obj in label_set:
+                    label_list.append({"label": label_obj.label})
                 for note_obj in notes_set:
                     note_list.append({"note_id": note_obj.id,
                                       "note_time": note_obj.note_time,
@@ -269,9 +250,13 @@ def attention_videos(request, token, *args, **kwargs):
                 teacher_obj = video_obj.teacher_id
                 teacher_id = teacher_obj.id
                 teacher_name = teacher_obj.user_id.username
-                teacher_dict = {"teacher_id": teacher_id, "teacher_name": teacher_name}
+                teacher_school = teacher_obj.school_id.school_name
+                teacher_dict = {"teacher_id": teacher_id,
+                                "teacher_name": teacher_name,
+                                "teacher_school": teacher_school}
                 video_dict["video_id"] = video_obj.id
-                video_dict["video_name"] = video_obj.name
+                video_dict["video_name"] = video_obj.video_name
+                video_dict["file_path"] = video_obj.file_path
                 video_dict["teacher_data"] = teacher_dict
                 video_dict["end_time"] = video_obj.end_time
                 video_dict["image_path"] = video_obj.image_path

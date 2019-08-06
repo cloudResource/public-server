@@ -54,7 +54,7 @@ def enter(request, *args, **kwargs):
                             status=200)
     except Exception as e:
         logger.error(e)
-        return JsonResponse(data={"error": "登录失败", "status": 400}, status=400)
+        return JsonResponse(data={"error": "登录失败", "status": 404}, status=404)
 
 
 def logout(request, *args, **kwargs):
@@ -154,7 +154,7 @@ def info(request, token, *args, **kwargs):
         return JsonResponse(data={"data": data, "status": 200})
     except Exception as e:
         logger.error(e)
-        return JsonResponse(data={"error": "获取数据失败", "status": 400}, status=400)
+        return JsonResponse(data={"error": "获取数据失败", "status": 404}, status=404)
 
 
 def change_password(request, *args, **kwargs):
@@ -337,7 +337,7 @@ def rename(request, token, *args, **kwargs):
         return JsonResponse(data={"message": "保存成功", "status": 200})
     except Exception as e:
         logger.error(e)
-        return JsonResponse(data={"error": "添加用户标签失败", "status": 400}, status=400)
+        return JsonResponse(data={"error": "修改用户名失败", "status": 400}, status=400)
 
 
 @check_token("attention_teacher")

@@ -1,4 +1,4 @@
-"""yysb URL Configuration
+"""video URL Configuration
 
 The `urlpatterns` list routes URLs to views. For more information please see:
     https://docs.djangoproject.com/en/1.11/topics/http/urls/
@@ -23,6 +23,6 @@ urlpatterns = [
     url(r'^list_comment$', views.list_comment),  # 获取所有评论
     url(r'^add_comment$', views.add_comment),  # 添加一条评论
     url(r'^video_state$', views.video_state),  # 查看视频上传状态
-    url(r'^add_video_label$', views.add_video_label),  # 添加视频标签
-    url(r'^attention_videos/$', views.attention_videos),  # 获取关注教师的视频
+    url(r'^attention_videos$', views.attention_videos),  # 获取关注教师的视频
+    url(r'^change/video_name$', views.change_video_name),  # 获取关注教师的视频
 ]
