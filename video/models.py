@@ -33,6 +33,8 @@ class Moment(models.Model):
     moment_time = models.IntegerField(help_text="回放时间秒", null=True)
     moment_path = models.CharField(max_length=100, help_text="精彩回放图片")
     video_id = models.ForeignKey(Video, null=True, db_column="video_id")
+    start_time = models.IntegerField(help_text="开始时间", null=True)
+    stop_time = models.IntegerField(help_text="结束时间", null=True)
 
     class Meta:
         db_table = "tb_moment"

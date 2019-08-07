@@ -12,7 +12,7 @@ from utils.decoration import check_login
 logger = logging.getLogger("django")
 
 
-@check_login("get_teachers")
+@check_login()
 def get_teachers(request):
     """
     查询所有教师
@@ -38,7 +38,7 @@ def get_teachers(request):
         return JsonResponse(data={"error": "获取数据失败", "status": 400}, status=400)
 
 
-@check_login("add_teacher")
+@check_login()
 def add_teacher(request):
     """
     添加教师
@@ -63,7 +63,7 @@ def add_teacher(request):
         return JsonResponse(data={"error": "获取数据失败", "status": 400}, status=400)
 
 
-@check_login("del_teacher")
+@check_login()
 def del_teacher(request):
     """
     删除教师
@@ -86,7 +86,7 @@ def del_teacher(request):
         return JsonResponse(data={"error": "获取数据失败", "status": 400}, status=400)
 
 
-@check_login("get_classes")
+@check_login()
 def get_classes(request):
     """
     查询所有班级
@@ -113,7 +113,7 @@ def get_classes(request):
         return JsonResponse(data={"error": "添加失败", "status": 400}, status=400)
 
 
-@check_login("add_grade")
+@check_login()
 def add_grade(request):
     """
     添加年级
@@ -130,7 +130,7 @@ def add_grade(request):
         return JsonResponse(data={"error": "添加失败", "status": 400}, status=400)
 
 
-@check_login("add_class")
+@check_login()
 def add_class(request):
     """
     添加教室

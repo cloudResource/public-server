@@ -1,7 +1,7 @@
 from django.http import JsonResponse
 
 
-def check_login(action):
+def check_login():
     """
     学校管理员PC端
     校验用户状态装饰器
@@ -24,7 +24,7 @@ def check_login(action):
     return check_data
 
 
-def check_token(action):
+def check_token():
     """
     微信小程序校验用户是否注册
 
@@ -37,6 +37,25 @@ def check_token(action):
                 return JsonResponse(data={"error": "缺少token信息", "status": 400})
 
             return func(request, token, *args, **kwargs)
+
+        return wrapped
+
+    return check_data
+
+
+def drf_check_token():
+    """
+    django_rest_framework视图类
+    微信小程序校验用户是否注册
+
+    """
+
+    def check_data(func):
+        def wrapped(self, request, *args, **kwargs):
+            token = request.META.get("HTTP_TOKEN", None)
+            if not token:
+                return JsonResponse(data={"error": "缺少token信息", "status": 400})
+            return func(self, request, token=token, *args, **kwargs)
 
         return wrapped
 

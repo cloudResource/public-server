@@ -1,6 +1,6 @@
 import random
 import re
-
+from rest_framework.generics import *
 from django.http import JsonResponse
 import logging
 
@@ -10,7 +10,7 @@ from manager.models import Teacher, RelationUser
 from user import constants
 from celery_tasks.sms.tasks import send_sms_code
 from user.models import User, Label
-from utils.decoration import check_token
+from utils.decoration import check_token, drf_check_token
 
 # Create your views here.
 
@@ -69,7 +69,7 @@ def logout(request, *args, **kwargs):
     return JsonResponse(data={"message": "退出成功", "status": 200})
 
 
-@check_token("add_label")
+@check_token()
 def add_label(request, token, *args, **kwargs):
     """
     添加用户标签
@@ -98,7 +98,7 @@ def add_label(request, token, *args, **kwargs):
         return JsonResponse(data={"error": "添加用户标签失败", "status": 400}, status=400)
 
 
-@check_token("del_label")
+@check_token()
 def del_label(request, token, *args, **kwargs):
     """
     删除用户标签
@@ -126,7 +126,7 @@ def del_label(request, token, *args, **kwargs):
         return JsonResponse(data={"error": "删除用户标签失败", "status": 400}, status=400)
 
 
-@check_token("info")
+@check_token()
 def info(request, token, *args, **kwargs):
     """
     个人中心
@@ -315,7 +315,7 @@ def sms_codes(request, *args, **kwargs):
     return JsonResponse(data={"message": "发送成功", "status": 200})
 
 
-@check_token("rename")
+@check_token()
 def rename(request, token, *args, **kwargs):
     """
     修改用户名
@@ -340,61 +340,7 @@ def rename(request, token, *args, **kwargs):
         return JsonResponse(data={"error": "修改用户名失败", "status": 400}, status=400)
 
 
-@check_token("attention_teacher")
-def attention_teacher(request, token, *args, **kwargs):
-    """
-    关注教师
-    :param request:
-    :param token: 用户验证，唯一标识
-    :param args:
-    :param kwargs:
-    :return:
-    """
-    teacher_id = request.POST.get('teacher_id')
-    if not teacher_id:
-        return JsonResponse(data={"error": "缺少必传参数", "status": 400})
-    try:
-        user_obj = User.objects.filter(openid=token).first()
-        if not user_obj:
-            return JsonResponse(data={"error": "用户未注册", "status": 401})
-        teacher_obj = Teacher.objects.filter(id=teacher_id).first()
-        if not teacher_obj:
-            return JsonResponse(data={"error": "该老师不存在", "status": 400})
-        RelationUser.objects.create(user_id=user_obj, teacher_id=teacher_obj)
-        return JsonResponse(data={"message": "关注教师成功", "status": 200})
-    except Exception as e:
-        logger.error(e)
-        return JsonResponse(data={"error": "关注教师失败", "status": 400}, status=400)
-
-
-@check_token("get_attention_teachers")
-def get_attention_teachers(request, token, *args, **kwargs):
-    """
-    查看关注教师
-    :param request:
-    :param token: 用户验证，唯一标识
-    :param args:
-    :param kwargs:
-    :return:
-    """
-    try:
-        user_obj = User.objects.filter(openid=token).first()
-        if not user_obj:
-            return JsonResponse(data={"error": "用户未注册", "status": 401})
-        teacher_set = RelationUser.objects.filter(user_id=user_obj)
-        teacher_list = []
-        for teacher_obj in teacher_set:
-            user_id = teacher_obj.teacher_id.user_id.id
-            user_name = teacher_obj.teacher_id.user_id.username
-            teacher_dict = {"user_id": user_id, "user_name": user_name}
-            teacher_list.append(teacher_dict)
-        return JsonResponse(data={"data": {"teacher_list": teacher_list}, "status": 200})
-    except Exception as e:
-        logger.error(e)
-        return JsonResponse(data={"error": "关注教师失败", "status": 400}, status=400)
-
-
-@check_token("get_teachers_data")
+@check_token()
 def get_teacher_data(request, token, *args, **kwargs):
     """
     获取教师信息
@@ -404,7 +350,7 @@ def get_teacher_data(request, token, *args, **kwargs):
     :param kwargs:
     :return:
     """
-    uuid = kwargs.get("uuid")
+    uuid = int(kwargs.get("uuid"))
     if not uuid:
         return JsonResponse(data={"error": "缺少必传参数", "status": 400})
     try:
@@ -433,3 +379,98 @@ def get_teacher_data(request, token, *args, **kwargs):
     except Exception as e:
         logger.error(e)
         return JsonResponse(data={"error": "获取教师信息失败", "status": 400}, status=400)
+
+
+class AttentionTeachers(ListCreateAPIView):
+    """
+    method: 请求方法
+        GET: 查询关注教师
+        POST: 关注教师
+    """
+    @drf_check_token()
+    def get(self, request, *args, **kwargs):
+        """
+        查看关注教师
+        :param request:
+        :param args:
+        :param kwargs:
+        :return:
+        """
+        token = kwargs.get("token")
+        try:
+            user_obj = User.objects.filter(openid=token).first()
+            if not user_obj:
+                return JsonResponse(data={"error": "用户未注册", "status": 401})
+            relation_user_set = RelationUser.objects.filter(user_id=user_obj)
+            teacher_list = []
+            for relation_user_obj in relation_user_set:
+                teacher_id = relation_user_obj.teacher_id.id
+                user_name = relation_user_obj.teacher_id.user_id.username
+                teacher_dict = {"teacher_id": teacher_id, "user_name": user_name}
+                teacher_list.append(teacher_dict)
+            return JsonResponse(data={"data": {"teacher_list": teacher_list}, "status": 200})
+        except Exception as e:
+            logger.error(e)
+            return JsonResponse(data={"error": "获取数据失败", "status": 400}, status=400)
+
+    @drf_check_token()
+    def post(self, request, *args, **kwargs):
+        """
+        关注教师
+        :param request:
+        :param args:
+        :param kwargs:
+        :return:
+        """
+        token = kwargs.get("token")
+        teacher_id = request.POST.get('teacher_id')
+        if not teacher_id:
+            return JsonResponse(data={"error": "缺少必传参数", "status": 400})
+        try:
+            user_obj = User.objects.filter(openid=token).first()
+            if not user_obj:
+                return JsonResponse(data={"error": "用户未注册", "status": 401})
+            teacher_obj = Teacher.objects.filter(id=teacher_id).first()
+            if not teacher_obj:
+                return JsonResponse(data={"error": "该老师不存在", "status": 400})
+            relation_user_obj = RelationUser.objects.filter(teacher_id=teacher_obj, user_id=user_obj).first()
+            if relation_user_obj:
+                return JsonResponse(data={"error": "已关注该教师", "status": 400})
+            RelationUser.objects.create(user_id=user_obj, teacher_id=teacher_obj)
+            return JsonResponse(data={"message": "关注教师成功", "status": 200})
+        except Exception as e:
+            logger.error(e)
+            return JsonResponse(data={"error": "关注教师失败", "status": 400}, status=400)
+
+
+class UnfollowTeachers(DestroyAPIView):
+    """
+    method: 请求方法
+        DELETE: 取消关注教师
+    """
+    @drf_check_token()
+    def delete(self, request, *args, **kwargs):
+        """
+        取消关注教师
+        :param request:
+        :param args:
+        :param kwargs:
+        :return:
+        """
+        token = kwargs.get("token")
+        uuid = int(kwargs.get("uuid"))
+        try:
+            user_obj = User.objects.filter(openid=token).first()
+            if not user_obj:
+                return JsonResponse(data={"error": "用户未注册", "status": 401})
+            teacher_obj = Teacher.objects.filter(id=uuid).first()
+            if not teacher_obj:
+                return JsonResponse(data={"error": "该老师不存在", "status": 400})
+            relation_user_obj = RelationUser.objects.filter(teacher_id=teacher_obj, user_id=user_obj).first()
+            if not relation_user_obj:
+                return JsonResponse(data={"error": "未关注该教师", "status": 400})
+            relation_user_obj.delete()
+            return JsonResponse(data={"data": {"message": "取消关注成功", "status": 200}})
+        except Exception as e:
+            logger.error(e)
+            return JsonResponse(data={"error": "获取数据失败", "status": 400}, status=400)

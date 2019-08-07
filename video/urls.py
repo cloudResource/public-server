@@ -25,4 +25,6 @@ urlpatterns = [
     url(r'^video_state$', views.video_state),  # 查看视频上传状态
     url(r'^attention_videos$', views.attention_videos),  # 获取关注教师的视频
     url(r'^change/video_name$', views.change_video_name),  # 获取关注教师的视频
+    url(r'^own_videos$', views.own_videos),  # 获取自己的视频
+    url(r'^set_param/(?P<uuid>[\w-]+)/moment$', views.set_param_moment),  # 为视频精彩时刻添加参数
 ]
