@@ -366,7 +366,7 @@ def get_teacher_data(request, token, *args, **kwargs):
         for label_obj in teacher_obj.user_id.label_set.all():
             label_list.append({"label": label_obj.label})
         for video_obj in teacher_obj.video_set.all():
-            video_list.append({"name": video_obj.name,
+            video_list.append({"video_name": video_obj.video_name,
                                "is_delete": video_obj.is_delete,
                                "status": video_obj.status,
                                "image_path": video_obj.image_path,
@@ -383,10 +383,11 @@ def get_teacher_data(request, token, *args, **kwargs):
 
 class AttentionTeachers(ListCreateAPIView):
     """
-    method: 请求方法
-        GET: 查询关注教师
-        POST: 关注教师
+    METHOD: 请求方法
+        get: 查询关注教师
+        post: 关注教师
     """
+
     @drf_check_token()
     def get(self, request, *args, **kwargs):
         """
@@ -408,7 +409,7 @@ class AttentionTeachers(ListCreateAPIView):
                 user_name = relation_user_obj.teacher_id.user_id.username
                 teacher_dict = {"teacher_id": teacher_id, "user_name": user_name}
                 teacher_list.append(teacher_dict)
-            return JsonResponse(data={"data": {"teacher_list": teacher_list}, "status": 200})
+            return JsonResponse(data={"data": teacher_list, "status": 200})
         except Exception as e:
             logger.error(e)
             return JsonResponse(data={"error": "获取数据失败", "status": 400}, status=400)
@@ -445,9 +446,10 @@ class AttentionTeachers(ListCreateAPIView):
 
 class UnfollowTeachers(DestroyAPIView):
     """
-    method: 请求方法
-        DELETE: 取消关注教师
+    METHOD: 请求方法
+        delete: 取消关注教师
     """
+
     @drf_check_token()
     def delete(self, request, *args, **kwargs):
         """
@@ -470,7 +472,7 @@ class UnfollowTeachers(DestroyAPIView):
             if not relation_user_obj:
                 return JsonResponse(data={"error": "未关注该教师", "status": 400})
             relation_user_obj.delete()
-            return JsonResponse(data={"data": {"message": "取消关注成功", "status": 200}})
+            return JsonResponse(data={"message": "取消关注成功", "status": 200})
         except Exception as e:
             logger.error(e)
             return JsonResponse(data={"error": "获取数据失败", "status": 400}, status=400)

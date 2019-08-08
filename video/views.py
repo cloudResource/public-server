@@ -1,12 +1,14 @@
 from django.http import JsonResponse
+from rest_framework.generics import ListCreateAPIView
+
 from celery_tasks.video.tasks import save_video
 # Create your views here.
 from manager.models import RelationUser
 from user.models import User
-from utils.decoration import check_token
+from utils.decoration import check_token, drf_check_token
 from video.control import *
 import logging
-from video.models import Video, Moment
+from video.models import Video, Moment, Comment
 
 logger = logging.getLogger("django")
 
@@ -102,6 +104,8 @@ def list_video(request, token, *args, **kwargs):
                 moment_list.append(
                     {"moment_id": moment_obj.id,
                      "moment_time": moment_obj.moment_time,
+                     "start_time": moment_obj.start_time,
+                     "stop_time": moment_obj.stop_time,
                      "moment_path": moment_obj.moment_path})
             teacher_obj = video.teacher_id
             teacher_id = teacher_obj.id
@@ -135,53 +139,141 @@ def list_video(request, token, *args, **kwargs):
         return JsonResponse(data={"error": "获取数据失败", "status": 400})
 
 
-def list_comment(request):
+class ReviewData(ListCreateAPIView):
     """
-    查看所有评论
-    :param request:
-    :return:
-    """
-    # data = {"data": []}
-    # try:
-    #     comments = Comment.objects.all()
-    #     for comment in comments:
-    #         comment_dict = {}
-    #         comment_dict["name"] = comment.name
-    #         comment_dict["comment"] = comment.comment
-    #         data["data"].append(comment_dict)
-    #     data["status"] = 200
-    #     return JsonResponse(data=data)
-    # except Exception as e:
-    #     logger.error(e)
-    #     return JsonResponse(data={"message": "获取数据失败", "status": 400})
-    pass
-
-
-def add_comment(request):
-    """
-    添加一条评论
-    :param request:
-    :return:
-    """
-    # try:
-    #     name = request.POST.get("name")
-    #     comment = request.POST.get("comment")
-    #     comment_obj = Comment.objects.create(name=name, end_time=comment)
-    #     comment_obj.save()
-    # except Exception as e:
-    #     logger.error(e)
-    #     return JsonResponse(data={"message": "获取数据失败", "status": 400})
-    pass
-
-
-def video_state(request):
-    """
-    查看视频上传状态
-
+    METHOD: 请求方法
+        get: 给某个视频添加一条评论
+        post: 获取某个视频所有评论
     """
 
-    video_obj = Video.objects.all()
-    pass
+    @drf_check_token()
+    def get(self, request, *args, **kwargs):
+        """
+        获取某个视频所有评论
+        :param request:
+        :param args:
+        :param kwargs:
+        :return:
+        """
+        token = kwargs.get("token")
+        uuid = int(kwargs.get("uuid"))
+        if not uuid:
+            return JsonResponse(data={"error": "缺少必传参数", "status": 400})
+        try:
+            user_obj = User.objects.filter(openid=token).first()
+            if not user_obj:
+                return JsonResponse(data={"error": "用户未注册", "status": 401})
+            video_obj = Video.objects.filter(id=uuid).first()
+            if not video_obj:
+                return JsonResponse(data={"error": "该视频不存在", "status": 400})
+            comment_set = Comment.objects.filter(video_id=video_obj)
+            comment_list = list()
+            for comment_obj in comment_set:
+                comment_dict = dict()
+                user_dict = dict()
+                comment_id = comment_obj.id
+                comment_data = comment_obj.comment
+                user_id = comment_obj.user_id.id
+                user_name = comment_obj.user_id.username
+                label_set = comment_obj.user_id.label_set.all()
+                label_list = list()
+                for label_obj in label_set:
+                    label_dict = dict()
+                    label_dict["id"] = label_obj.id
+                    label_dict["label"] = label_obj.label
+                    label_list.append(label_dict)
+                user_dict["user_id"] = user_id
+                user_dict["user_name"] = user_name
+                user_dict["label_list"] = label_list
+                comment_dict["comment_id"] = comment_id
+                comment_dict["comment_data"] = comment_data
+                comment_dict["user_dict"] = user_dict
+                comment_list.append(comment_dict)
+            return JsonResponse(data={"data": comment_list, "status": 200})
+        except Exception as e:
+            logger.error(e)
+            return JsonResponse(data={"error": "获取数据失败", "status": 400}, status=400)
+
+    @drf_check_token()
+    def post(self, request, *args, **kwargs):
+        """
+        给某个视频添加一条评论
+        :param request:
+        :param args:
+        :param kwargs:
+        :return:
+        """
+        token = kwargs.get("token")
+        uuid = int(kwargs.get("uuid"))
+        comment = request.POST.get('comment')
+        if not uuid:
+            return JsonResponse(data={"error": "缺少必传参数", "status": 400})
+        try:
+            user_obj = User.objects.filter(openid=token).first()
+            if not user_obj:
+                return JsonResponse(data={"error": "用户未注册", "status": 401})
+            video_obj = Video.objects.filter(id=uuid).first()
+            if not video_obj:
+                return JsonResponse(data={"error": "该视频不存在", "status": 400})
+            comment_obj = Comment.objects.create(comment=comment, video_id=video_obj, user_id=user_obj)
+            comment_dict = dict()
+            user_dict = dict()
+            comment_id = comment_obj.id
+            comment_data = comment_obj.comment
+            user_id = comment_obj.user_id.id
+            user_name = comment_obj.user_id.username
+            label_set = comment_obj.user_id.label_set.all()
+            label_list = list()
+            for label_obj in label_set:
+                label_dict = dict()
+                label_dict["id"] = label_obj.id
+                label_dict["label"] = label_obj.label
+                label_list.append(label_dict)
+            user_dict["user_id"] = user_id
+            user_dict["user_name"] = user_name
+            user_dict["label_list"] = label_list
+            comment_dict["comment_id"] = comment_id
+            comment_dict["comment_data"] = comment_data
+            comment_dict["user_dict"] = user_dict
+            return JsonResponse(data={"data": comment_dict, "status": 200})
+        except Exception as e:
+            logger.error(e)
+            return JsonResponse(data={"error": "发布评论失败", "status": 400}, status=400)
+
+
+class ReviewDataDel(ListCreateAPIView):
+    """
+    METHOD: 请求方法
+        delete: 删除某条评论
+    """
+
+    @drf_check_token()
+    def delete(self, request, *args, **kwargs):
+        """
+        删除某条评论
+        :param request:
+        :param args:
+        :param kwargs:
+        :return:
+        """
+        token = kwargs.get("token")
+        uuid = int(kwargs.get("uuid"))
+        if not uuid:
+            return JsonResponse(data={"error": "缺少必传参数", "status": 400})
+        try:
+            user_obj = User.objects.filter(openid=token).first()
+            if not user_obj:
+                return JsonResponse(data={"error": "用户未注册", "status": 401})
+            comment_obj = Comment.objects.filter(id=uuid).first()
+            if not comment_obj:
+                return JsonResponse(data={"error": "该评论不存在", "status": 400})
+            if comment_obj.user_id.openid != token:
+                return JsonResponse(data={"error": "无权操作", "status": 400})
+            comment_obj.delete()
+            return JsonResponse(data={"data": {"message": "删除评论成功", "status": 200}})
+        except Exception as e:
+            logger.error(e)
+            return JsonResponse(data={"error": "删除评论失败", "status": 400}, status=400)
 
 
 @check_token()
@@ -315,6 +407,8 @@ def own_videos(request, token, *args, **kwargs):
                 moment_list.append(
                     {"moment_id": moment_obj.id,
                      "moment_time": moment_obj.moment_time,
+                     "start_time": moment_obj.start_time,
+                     "stop_time": moment_obj.stop_time,
                      "moment_path": moment_obj.moment_path})
             teacher_obj = video_obj.teacher_id
             teacher_id = teacher_obj.id
@@ -346,6 +440,7 @@ def own_videos(request, token, *args, **kwargs):
     except Exception as e:
         logger.error(e)
         return JsonResponse(data={"error": "获取数据失败", "status": 400})
+
 
 @check_token()
 def set_param_moment(request, token, *args, **kwargs):

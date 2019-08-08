@@ -20,9 +20,8 @@ urlpatterns = [
     url(r'^start$', views.start_recording),  # 开始录制视频
     url(r'^stop$', views.stop_recording),  # 结束录制视频
     url(r'^list_video$', views.list_video),  # 列表查询所有视频
-    url(r'^list_comment$', views.list_comment),  # 获取所有评论
-    url(r'^add_comment$', views.add_comment),  # 添加一条评论
-    url(r'^video_state$', views.video_state),  # 查看视频上传状态
+    url(r'^comment/(?P<uuid>[\w-]+)/$', views.ReviewData.as_view()),  # POST: 给某个视频添加一条评论 GET: 获取某个视频所有评论
+    url(r'^comment/(?P<uuid>[\w-]+)/del$', views.ReviewDataDel.as_view()),  # DELETE: 删除某条评论
     url(r'^attention_videos$', views.attention_videos),  # 获取关注教师的视频
     url(r'^change/video_name$', views.change_video_name),  # 获取关注教师的视频
     url(r'^own_videos$', views.own_videos),  # 获取自己的视频

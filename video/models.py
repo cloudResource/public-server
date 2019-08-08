@@ -42,8 +42,10 @@ class Moment(models.Model):
 
 class Comment(models.Model):
     comment = models.CharField(max_length=100, null=True, help_text="用户评论信息")
-    like = models.IntegerField(help_text="评论点赞数")
     video_id = models.ForeignKey(Video, null=True, db_column="video_id")
+    user_id = models.ForeignKey(User, null=True, db_column="user_id")
 
     class Meta:
         db_table = "tb_comment"
+
+
