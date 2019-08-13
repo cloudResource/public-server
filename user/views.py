@@ -147,10 +147,11 @@ def info(request, token, *args, **kwargs):
             label_dict["id"] = label_obj.id
             label_dict["label"] = label_obj.label
             label_list.append(label_dict)
+        id = user.id
         mobile = user.mobile
         user_name = user.username
         role = user.role
-        data = {"mobile": mobile, "user_name": user_name, "role": role, "label": label_list}
+        data = { "id": id, "mobile": mobile, "user_name": user_name, "role": role, "label": label_list}
         return JsonResponse(data={"data": data, "status": 200})
     except Exception as e:
         logger.error(e)

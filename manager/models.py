@@ -40,17 +40,9 @@ class RelationUser(models.Model):
         db_table = "tb_relation_user"
 
 
-class Grade(models.Model):
-    grade_name = models.CharField(max_length=64, null=True, help_text="年级名称")
-    school_id = models.ForeignKey(School, null=True, db_column="school_id")
-
-    class Meta:
-        db_table = "tb_grade"
-
-
 class Class(models.Model):
     class_name = models.CharField(max_length=64, null=True, help_text="班级名称")
-    grade_id = models.ForeignKey(Grade, null=True, db_column="grade_id")
+    grade_name = models.CharField(max_length=64, null=True, help_text="年级名称")
     school_id = models.ForeignKey(School, null=True, db_column="school_id")
 
     class Meta:
@@ -58,11 +50,10 @@ class Class(models.Model):
 
 
 class Equipment(models.Model):
-    use_teacher = models.ForeignKey(Grade, null=True, db_column="use_teacher_id")
-    equipment_url = models.CharField(max_length=100, null=True, help_text="设备地址")
+    mac_address = models.CharField(max_length=100, unique=True, null=True, help_text="设备mac地址")
     teacher_id = models.ForeignKey(Teacher, null=True, db_column="teacher_id")
     class_id = models.ForeignKey(Class, null=True, db_column="class_id")
-    status = models.BooleanField(default=True, help_text="设备的状态")
+    status = models.BooleanField(default=False, help_text="设备的状态")
     real_url = models.CharField(max_length=100, null=True, help_text="实时视频地址")
 
     class Meta:

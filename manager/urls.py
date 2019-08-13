@@ -19,10 +19,13 @@ from . import views
 urlpatterns = [
     url(r'^get_teachers$', views.get_teachers),  # 查询所有教师
     url(r'^add_teacher$', views.add_teacher),  # 添加教师
+    url(r'^add_teacher/batch$', views.batch_add_teacher),  # 批量添加教师
     url(r'^del_teacher$', views.del_teacher),  # 删除教师
+    url(r'^del_class$', views.del_class),  # 删除教室
     url(r'^get_classes$', views.get_classes),  # 查询所有班级
-    url(r'^add_grade$', views.add_grade),  # 添加年级
     url(r'^add_class$', views.add_class),  # 添加班级
+    url(r'^add_class/batch$', views.batch_add_class),  # 批量添加班级
+    url(r'^file_down$', views.file_down),  # 批量添加班级
     url(r'^get_projects$', views.get_projects),  # 查询项目信息
     url(r'^login$', views.login),  # 学校管理员登录
     url(r'^logout$', views.logout),  # 学校管理员退出
