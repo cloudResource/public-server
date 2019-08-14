@@ -3,7 +3,7 @@ from rest_framework.generics import ListCreateAPIView
 
 from celery_tasks.video.tasks import save_video
 # Create your views here.
-from manager.models import RelationUser
+from manager.models import *
 from user.models import User
 from utils.decoration import check_token, drf_check_token
 from video.control import *
@@ -11,66 +11,6 @@ import logging
 from video.models import Video, Moment, Comment
 
 logger = logging.getLogger("django")
-
-
-def start_recording(request):
-    """
-    开始录制视频
-    :param request:
-    :return:
-    """
-    try:
-        # 切换摄像头状态
-        change_ret = switch_state(1)
-        if change_ret is False:
-            return JsonResponse(data={"error": "摄像头切换录制模式错误，请检查您的网络", "status": 400})
-        # 结束当前视频
-        stop_ret = video_recording(0)
-        if stop_ret is False:
-            return JsonResponse(data={"error": "连接摄像头时发生错误，请检查您的网络", "status": 400})
-        # 删除设备SD卡内所有文件
-        delete_ret = del_all_files()
-        if delete_ret is False:
-            return JsonResponse(data={"error": "连接设备SD卡时发生错误，请检查您的网络", "status": 400})
-        # 开始录制视频
-        start_ret = video_recording(1)
-        if start_ret is False:
-            return JsonResponse(data={"error": "录制视频错误，请检查您的网络", "status": 400})
-        return JsonResponse(data={"message": "开始录制成功", "status": 200})
-    except Exception as e:
-        logger.error(e)
-        return JsonResponse(data={"error": "开始录制失败", "status": 400})
-
-
-def stop_recording(request):
-    """
-    结束录制视频
-    :param request:
-    :return:
-    """
-    try:
-        # 结束当前视频
-        stop_ret = video_recording(0)
-        if stop_ret is False:
-            return JsonResponse(data={"error": "连接摄像头时发生错误，请检查您的网络", "status": 400})
-        # 获取所有视频文件
-        video_ret = get_files()
-        if video_ret is False:
-            return JsonResponse(data={"error": "连接设备SD卡时发生错误，请检查您的网络", "status": 400})
-        for video in video_ret:
-            timestamp = unix_time(video["time"])
-            try:
-                video_obj = Video.objects.create(name=video["name"], end_time=timestamp, size=video["size"])
-                video_obj.save()
-            except Exception as e:
-                logger.error(e)
-                return JsonResponse(data={"error": "结束录制失败", "status": 400})
-            # 保存SD卡中的视频到本地
-            save_video.delay(video["name"])
-        return JsonResponse(data={"message": "结束录制成功", "status": 200})
-    except Exception as e:
-        logger.error(e)
-        return JsonResponse(data={"error": "结束录制失败", "status": 400})
 
 
 @check_token()
@@ -468,6 +408,74 @@ def set_param_moment(request, token, *args, **kwargs):
         moment_obj.start_time = int(start_time)
         moment_obj.stop_time = int(stop_time)
         moment_obj.save()
+        return JsonResponse(data={"message": "添加成功", "status": 200})
+    except Exception as e:
+        logger.error(e)
+        return JsonResponse(data={"error": "添加失败", "status": 400})
+
+
+@check_token()
+def video_start(request, token, *args, **kwargs):
+    """
+    开始录制视频
+    :param request:
+    :param token: 用户验证，唯一标识
+    :param args:
+    :param kwargs:
+    :return:
+    """
+    class_id = request.POST.get('class_id')
+    if not class_id:
+        return JsonResponse(data={"error": "缺少必传参数", "status": 400})
+    try:
+        user_obj = User.objects.filter(openid=token).first()
+        if not user_obj:
+            return JsonResponse(data={"error": "用户未注册", "status": 401})
+        if user_obj.role != "teacher":
+            return JsonResponse(data={"error": "非教师用户无权录制", "status": 400})
+        class_obj = Class.objects.filter(id=class_id).first()
+        if not class_obj:
+            return JsonResponse(data={"error": "该教室不存在", "status": 400})
+        equipment_obj = class_obj.equipment
+        if not equipment_obj:
+            return JsonResponse(data={"error": "该教室未绑定录制设备", "status": 400})
+        if equipment_obj.school_id != user_obj.teacher.school_id:
+            return JsonResponse(data={"error": "无权操作", "status": 400})
+        domain = equipment_obj.school_id.domain
+        mac_address = equipment_obj.mac_address
+        response_data = start_recording(domain, mac_address)
+        file_name = response_data.get("file_name", None)
+        if not file_name:
+            return JsonResponse(data={"error": "录制失败请检查硬件设备和网络", "status": 400})
+        equipment_obj.status = True
+        equipment_obj.save()
+        video_name = int(time.time())
+        file_path = "/fsdata/videos/" + file_name + "/" + file_name
+        image_path = "/fsdata/videos/" + file_name + "/cover.png"
+        video_obj = Video.objects.create(video_name=video_name,
+                                         file_path=file_path,
+                                         image_path=image_path,
+                                         teacher_id=user_obj.teacher)
+        return JsonResponse(data={"data": {"id": video_obj.id,
+                                           "video_name": video_name,},
+                                  "status": 200})
+    except Exception as e:
+        logger.error(e)
+        return JsonResponse(data={"error": "开始录制失败", "status": 400})
+
+
+@check_token()
+def video_stop(request, token, *args, **kwargs):
+    mac_address = request.POST.get('mac_address')
+    if not mac_address:
+        return JsonResponse(data={"error": "缺少必传参数", "status": 400})
+    try:
+        user_obj = User.objects.filter(openid=token).first()
+        if not user_obj:
+            return JsonResponse(data={"error": "用户未注册", "status": 401})
+        if user_obj.role != "teacher":
+            return JsonResponse(data={"error": "非教师用户无权录制", "status": 400})
+
         return JsonResponse(data={"message": "添加成功", "status": 200})
     except Exception as e:
         logger.error(e)

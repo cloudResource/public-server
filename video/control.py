@@ -1,95 +1,35 @@
 import os
-import re
 import time
-
+import json
 import requests, re
-from xml.etree import ElementTree
 
 
-# 获取状态
-def get_status():
-    url = "http://192.168.2.235"
-    payload = {"custom": 1, "cmd": 3014}
-    res = requests.get(url, payload)
-    res.encoding = 'utf-8'
-    ipaddress = res.text
-    return ipaddress
-
-
-# 获取文件列表
-def get_files():
-    file_list = []
-    url = "http://192.168.2.235"
-    payload = {"custom": 1, "cmd": 3015}
-    try:
-        res = requests.get(url, payload)
-        res.encoding = 'utf-8'
-        root = ElementTree.XML(res.text)  # 将字符串解析为XML
-        for node in root.iter("File"):  # 迭代寻找TrainDetailInfo标签
-            # print(node.tag,node.attrib) #node的标签和属性
-            fpath = node.find('FPATH').text  # 寻找node下的标签
-            pat = r'.*DCIM.*Video'
-            ret = re.findall(pat, fpath)
-            if ret:
-                name = node.find('NAME').text
-                size = node.find('SIZE').text
-                time = node.find('TIME').text
-                timecode = node.find('TIMECODE').text
-                file_list.append({"name": name,
-                                  "fpath": fpath,
-                                  "size": size,
-                                  "time": time,
-                                  "timecode": timecode})
-        return file_list
-    except:
-        return False
-
-
-def del_all_files():
+def start_recording(domain, mac_address):
     """
-    删除所有文件
+    开始录制视频
+    :mac_address: 设备MAC地址
     :return:
     """
-    url = "http://192.168.2.235"
-    payload = {"custom": 1, "cmd": 4004}
-    try:
-        res = requests.get(url, payload)
-        res.encoding = 'utf-8'
-        return True
-    except:
-        return False
+    url = domain + "/control/v1/video_start"
+    data = {"mac_address": mac_address}
+    res = requests.post(url, data=data)
+    response_data = res.json()
+    return response_data
 
 
-def switch_state(par):
+
+def stop_recording(domain, mac_address):
     """
-    切换模式
-    :par: 1录像模式，2回看模式
+    结束录制视频
+    :domain: 学校域名
+    :mac_address: 设备MAC地址
     :return:
     """
-    url = "http://192.168.2.235"
-    payload = {"custom": 1, "cmd": 3001, "par": par}
-    try:
-        res = requests.get(url, payload)
-        res.encoding = 'utf-8'
-        return True
-    except:
-        return False
-
-
-# 录制视频
-def video_recording(par):
-    """
-    :par: 1开始录制，0停止录制
-    :return:
-    """
-    url = "http://192.168.2.235"
-    payload = {"custom": 1, "cmd": 2001, "par": par}
-    try:
-        res = requests.get(url, payload)
-        res.encoding = 'utf-8'
-        return True
-    except:
-        return False
+    url = domain + "/control/v1/video_stop"
+    data = {"mac_address": mac_address}
+    res = requests.post(url, data=json.dumps(data))
+    response_data = res.json()
+    return response_data
 
 
 def unix_time(dt):
