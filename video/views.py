@@ -64,7 +64,6 @@ def list_video(request, token, *args, **kwargs):
             video_dict["video_name"] = video.video_name
             video_dict["file_path"] = video.file_path
             video_dict["teacher_data"] = teacher_dict
-            video_dict["end_time"] = video.end_time
             video_dict["image_path"] = video.image_path
             video_dict["video_status"] = video.status
             video_dict["domain"] = video.teacher_id.school_id.domain
@@ -296,7 +295,6 @@ def attention_videos(request, token, *args, **kwargs):
                 video_dict["video_name"] = video_obj.video_name
                 video_dict["file_path"] = video_obj.file_path
                 video_dict["teacher_data"] = teacher_dict
-                video_dict["end_time"] = video_obj.end_time
                 video_dict["image_path"] = video_obj.image_path
                 video_dict["video_status"] = video_obj.status
                 video_dict["domain"] = video_obj.teacher_id.school_id.domain
@@ -367,7 +365,6 @@ def own_videos(request, token, *args, **kwargs):
             video_dict["video_name"] = video_obj.video_name
             video_dict["file_path"] = video_obj.file_path
             video_dict["teacher_data"] = teacher_dict
-            video_dict["end_time"] = video_obj.end_time
             video_dict["image_path"] = video_obj.image_path
             video_dict["video_status"] = video_obj.status
             video_dict["domain"] = video_obj.teacher_id.school_id.domain
@@ -433,14 +430,18 @@ def video_start(request, token, *args, **kwargs):
             return JsonResponse(data={"error": "用户未注册", "status": 401})
         if user_obj.role != "teacher":
             return JsonResponse(data={"error": "非教师用户无权录制", "status": 400})
-        class_obj = Class.objects.filter(id=class_id).first()
+        class_obj = Class.objects.filter(id=int(class_id)).first()
         if not class_obj:
             return JsonResponse(data={"error": "该教室不存在", "status": 400})
         equipment_obj = class_obj.equipment
-        if not equipment_obj:
+        if not class_obj.equipment:
             return JsonResponse(data={"error": "该教室未绑定录制设备", "status": 400})
         if equipment_obj.school_id != user_obj.teacher.school_id:
             return JsonResponse(data={"error": "无权操作", "status": 400})
+        if equipment_obj.status is True:
+            user_teacher_name = equipment_obj.teacher_id.user_id.username
+            return JsonResponse(data={"error": "录制失败,教师%s正在使用该教室,如急需使用请联系该教师停止录制" % user_teacher_name,
+                                      "status": 400})
         domain = equipment_obj.school_id.domain
         mac_address = equipment_obj.mac_address
         response_data = start_recording(domain, mac_address)
@@ -448,7 +449,7 @@ def video_start(request, token, *args, **kwargs):
         if not file_name:
             return JsonResponse(data={"error": "录制失败请检查硬件设备和网络", "status": 400})
         equipment_obj.status = True
-        equipment_obj.save()
+        equipment_obj.teacher_id = user_obj.teacher
         video_name = int(time.time())
         file_path = "/fsdata/videos/" + file_name + "/" + file_name
         image_path = "/fsdata/videos/" + file_name + "/cover.png"
@@ -456,27 +457,72 @@ def video_start(request, token, *args, **kwargs):
                                          file_path=file_path,
                                          image_path=image_path,
                                          teacher_id=user_obj.teacher)
+        equipment_obj.save()
         return JsonResponse(data={"data": {"id": video_obj.id,
-                                           "video_name": video_name,},
+                                           "video_name": video_name, },
                                   "status": 200})
     except Exception as e:
         logger.error(e)
+        e = str(e)
+        pat = r"Class has no equipment"
+        result = re.findall(pat, e)
+        if result:
+            return JsonResponse(data={"error": "该教室未绑定录制设备", "status": 400})
         return JsonResponse(data={"error": "开始录制失败", "status": 400})
 
 
 @check_token()
 def video_stop(request, token, *args, **kwargs):
-    mac_address = request.POST.get('mac_address')
-    if not mac_address:
+    """
+    结束录制视频
+    :param request:
+    :param token: 用户验证，唯一标识
+    :param args:
+    :param kwargs:
+    :return:
+    """
+    class_id = request.POST.get('class_id')
+    video_id = request.POST.get('video_id')
+    if not all([class_id, video_id]):
         return JsonResponse(data={"error": "缺少必传参数", "status": 400})
     try:
         user_obj = User.objects.filter(openid=token).first()
         if not user_obj:
             return JsonResponse(data={"error": "用户未注册", "status": 401})
         if user_obj.role != "teacher":
-            return JsonResponse(data={"error": "非教师用户无权录制", "status": 400})
-
-        return JsonResponse(data={"message": "添加成功", "status": 200})
+            return JsonResponse(data={"error": "无权操作", "status": 400})
+        class_obj = Class.objects.filter(id=int(class_id)).first()
+        if not class_obj:
+            return JsonResponse(data={"error": "该教室不存在", "status": 400})
+        equipment_obj = class_obj.equipment
+        if not class_obj.equipment:
+            return JsonResponse(data={"error": "该教室未绑定录制设备", "status": 400})
+        if equipment_obj.school_id != user_obj.teacher.school_id:
+            return JsonResponse(data={"error": "无权操作", "status": 400})
+        if equipment_obj.status is False:
+            return JsonResponse(data={"error": "停止失败，该教室不在录制中", "status": 400})
+        domain = equipment_obj.school_id.domain
+        mac_address = equipment_obj.mac_address
+        response_data = stop_recording(domain, mac_address)
+        response_status = response_data.get("status", None)
+        if response_status is not 200:
+            return JsonResponse(data={"error": "结束录制失败请检查硬件设备和网络", "status": 400})
+        equipment_obj.status = False
+        equipment_obj.teacher_id = None
+        video_obj = Video.objects.filter(id=video_id).first()
+        if not video_obj:
+            return JsonResponse(data={"error": "停止失败，该视频不存在", "status": 400})
+        video_obj.status = True
+        image_path = video_obj.image_path
+        equipment_obj.save()
+        video_obj.save()
+        return JsonResponse(data={"data": {"image_path": image_path},
+                                  "status": 200})
     except Exception as e:
         logger.error(e)
-        return JsonResponse(data={"error": "添加失败", "status": 400})
+        e = str(e)
+        pat = r"Class has no equipment"
+        result = re.findall(pat, e)
+        if result:
+            return JsonResponse(data={"error": "该教室未绑定录制设备", "status": 400})
+        return JsonResponse(data={"error": "开始录制失败", "status": 400})

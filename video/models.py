@@ -9,8 +9,6 @@ from user.models import User
 class Video(models.Model):
     video_name = models.CharField(max_length=100, null=True, help_text="视频名称")
     file_path = models.CharField(max_length=100, unique=True, help_text="文件名称")
-    end_time = models.IntegerField(help_text="视频结束时间戳")
-    size = models.IntegerField(help_text="视频文件大小")
     is_delete = models.BooleanField(default=False, help_text="视频的逻辑删除")
     status = models.BooleanField(default=False, help_text="视频的状态")
     image_path = models.CharField(max_length=100, null=True, help_text="图片播放地址")

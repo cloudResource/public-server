@@ -27,7 +27,7 @@ def stop_recording(domain, mac_address):
     """
     url = domain + "/control/v1/video_stop"
     data = {"mac_address": mac_address}
-    res = requests.post(url, data=json.dumps(data))
+    res = requests.post(url, data=data)
     response_data = res.json()
     return response_data
 
