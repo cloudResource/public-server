@@ -13,6 +13,7 @@ class Video(models.Model):
     status = models.BooleanField(default=False, help_text="视频的状态")
     image_path = models.CharField(max_length=100, null=True, help_text="图片播放地址")
     teacher_id = models.ForeignKey(Teacher, null=True, db_column="teacher_id")
+    is_issue = models.BooleanField(default=False, help_text="视频是否发布")
 
     class Meta:
         db_table = "tb_video"

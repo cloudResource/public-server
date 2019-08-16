@@ -26,4 +26,7 @@ urlpatterns = [
     url(r'^v1/set_param/(?P<uuid>[\w-]+)/moment$', views.set_param_moment),  # 为视频精彩时刻添加参数
     url(r'^v1/video_start$', views.video_start),  # 开始录制视频
     url(r'^v1/video_stop$', views.video_stop),  # 开始录制视频
+    url(r'^v1/video_issue$', views.video_issue),  # 发布视频
+    url(r'^v1/video_delete$', views.video_delete),  # 发布视频
+    url(r'^v1/get_classes$', views.get_classes),  # 发布视频
 ]

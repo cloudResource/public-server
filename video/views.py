@@ -25,7 +25,7 @@ def list_video(request, token, *args, **kwargs):
         user = User.objects.filter(openid=token).first()
         if not user:
             return JsonResponse(data={"error": "用户未注册", "status": 401})
-        videos_obj = Video.objects.all()
+        videos_obj = Video.objects.filter(is_delete=False)
         for video in videos_obj:
             video_dict = dict()
             note_list = list()
@@ -62,6 +62,7 @@ def list_video(request, token, *args, **kwargs):
                             "is_attention": is_attention}
             video_dict["video_id"] = video.id
             video_dict["video_name"] = video.video_name
+            video_dict["is_issue"] = video.is_issue
             video_dict["file_path"] = video.file_path
             video_dict["teacher_data"] = teacher_dict
             video_dict["image_path"] = video.image_path
@@ -326,7 +327,7 @@ def own_videos(request, token, *args, **kwargs):
             return JsonResponse(data={"error": "用户未注册", "status": 401})
         if user_obj.role != "teacher":
             return JsonResponse(data={"error": "角色不匹配，无权查看", "status": 400})
-        video_set = user_obj.teacher.video_set.all()
+        video_set = Video.objects.filter(teacher_id=user_obj.teacher, is_delete=False)
         for video_obj in video_set:
             video_dict = dict()
             note_list = list()
@@ -363,6 +364,7 @@ def own_videos(request, token, *args, **kwargs):
                             "is_attention": is_attention}
             video_dict["video_id"] = video_obj.id
             video_dict["video_name"] = video_obj.video_name
+            video_dict["is_issue"] = video_obj.is_issue
             video_dict["file_path"] = video_obj.file_path
             video_dict["teacher_data"] = teacher_dict
             video_dict["image_path"] = video_obj.image_path
@@ -506,7 +508,8 @@ def video_stop(request, token, *args, **kwargs):
         response_data = stop_recording(domain, mac_address)
         response_status = response_data.get("status", None)
         if response_status is not 200:
-            return JsonResponse(data={"error": "结束录制失败请检查硬件设备和网络", "status": 400})
+            return JsonResponse(data={"error": "结束录制失败请检查硬件设备和网络",
+                                      "status": 400})
         equipment_obj.status = False
         equipment_obj.teacher_id = None
         video_obj = Video.objects.filter(id=video_id).first()
@@ -526,3 +529,114 @@ def video_stop(request, token, *args, **kwargs):
         if result:
             return JsonResponse(data={"error": "该教室未绑定录制设备", "status": 400})
         return JsonResponse(data={"error": "开始录制失败", "status": 400})
+
+
+@check_token()
+def video_issue(request, token, *args, **kwargs):
+    """
+    发布视频功能
+    :param request:
+    :param token: 用户验证，唯一标识
+    :param args:
+    :param kwargs:
+    :return:
+    """
+    video_id = request.POST.get('video_id')
+    if not video_id:
+        return JsonResponse(data={"error": "缺少必传参数", "status": 400})
+    try:
+        user_obj = User.objects.filter(openid=token).first()
+        if not user_obj:
+            return JsonResponse(data={"error": "用户未注册", "status": 401})
+        if user_obj.role != "teacher":
+            return JsonResponse(data={"error": "无权操作", "status": 400})
+        video_obj = Video.objects.filter(id=video_id).first()
+        if not video_obj:
+            return JsonResponse(data={"error": "该视频不存在", "status": 400})
+        if video_obj.teacher_id != user_obj.teacher:
+            return JsonResponse(data={"error": "无权操作", "status": 400})
+        video_obj.is_issue = True
+        video_obj.save()
+        return JsonResponse(data={"message": "发布视频成功", "status": 200})
+    except Exception as e:
+        logger.error(e)
+        return JsonResponse(data={"error": "发布视频失败", "status": 400})
+
+
+@check_token()
+def video_delete(request, token, *args, **kwargs):
+    """
+    删除视频功能
+    :param request:
+    :param token: 用户验证，唯一标识
+    :param args:
+    :param kwargs:
+    :return:
+    """
+    video_id = request.POST.get('video_id')
+    if not video_id:
+        return JsonResponse(data={"error": "缺少必传参数", "status": 400})
+    try:
+        user_obj = User.objects.filter(openid=token).first()
+        if not user_obj:
+            return JsonResponse(data={"error": "用户未注册", "status": 401})
+        if user_obj.role != "teacher":
+            return JsonResponse(data={"error": "无权操作", "status": 400})
+        video_obj = Video.objects.filter(id=video_id).first()
+        if not video_obj:
+            return JsonResponse(data={"error": "该视频不存在", "status": 400})
+        if video_obj.teacher_id != user_obj.teacher:
+            return JsonResponse(data={"error": "无权操作", "status": 400})
+        video_obj.is_delete = True
+        video_obj.save()
+        return JsonResponse(data={"message": "删除视频成功", "status": 200})
+    except Exception as e:
+        logger.error(e)
+        return JsonResponse(data={"error": "删除视频失败", "status": 400})
+
+
+@check_token()
+def get_classes(request, token, *args, **kwargs):
+    """
+    教师录制获取所有教室
+    :param request:
+    :param token: 用户验证，唯一标识
+    :param args:
+    :param kwargs:
+    :return:
+    """
+    data = {"data": []}
+    try:
+        user_obj = User.objects.filter(openid=token).first()
+        if not user_obj:
+            return JsonResponse(data={"error": "用户未注册", "status": 401})
+        if user_obj.role != "teacher":
+            return JsonResponse(data={"error": "无权查看", "status": 400})
+        school_obj = user_obj.teacher.school_id
+        grade_set = Class.objects.values_list("grade_name", flat=True).distinct()
+        for grade_name in grade_set:
+            grade_dict = dict()
+            grade_list = list()
+            class_set = Class.objects.filter(school_id=school_obj, grade_name=grade_name)
+            for class_obj in class_set:
+                class_dict = dict()
+                equipment_dict = dict()
+                class_dict["id"] = class_obj.id
+                class_dict["class_name"] = class_obj.class_name
+                class_dict["grade_name"] = class_obj.grade_name
+                equipment_obj = Equipment.objects.filter(class_id=class_obj).first()
+                if equipment_obj:
+                    equipment_dict["equipment_id"] = class_obj.equipment.id
+                    equipment_dict["status"] = class_obj.equipment.status
+                    equipment_dict["real_url"] = class_obj.equipment.real_url
+                class_dict["equipment_dict"] = equipment_dict
+                grade_list.append(class_dict)
+            grade_dict["grade_name"] = grade_name
+            grade_dict["grade_class"] = grade_list
+            data["data"].append(grade_dict)
+        data["status"] = 200
+        return JsonResponse(data=data)
+
+    except Exception as e:
+        logger.error(e)
+        return JsonResponse(data={"error": "获取教室信息失败", "status": 400})
