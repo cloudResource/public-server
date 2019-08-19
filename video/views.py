@@ -8,7 +8,7 @@ from user.models import User
 from utils.decoration import check_token, drf_check_token
 from video.control import *
 import logging
-from video.models import Video, Moment, Comment
+from video.models import Video, Moment, Comment, Note
 
 logger = logging.getLogger("django")
 
@@ -39,6 +39,7 @@ def list_video(request, token, *args, **kwargs):
             for note_obj in notes_set:
                 note_list.append({"note_id": note_obj.id,
                                   "note_time": note_obj.note_time,
+                                  "is_hide": note_obj.is_hide,
                                   "note_path": note_obj.note_path})
             for moment_obj in moment_set:
                 moment_list.append(
@@ -96,10 +97,11 @@ class ReviewData(ListCreateAPIView):
         :return:
         """
         token = kwargs.get("token")
-        uuid = int(kwargs.get("uuid"))
+        uuid = kwargs.get("uuid")
         if not uuid:
             return JsonResponse(data={"error": "缺少必传参数", "status": 400})
         try:
+            uuid = int(uuid)
             user_obj = User.objects.filter(openid=token).first()
             if not user_obj:
                 return JsonResponse(data={"error": "用户未注册", "status": 401})
@@ -144,11 +146,12 @@ class ReviewData(ListCreateAPIView):
         :return:
         """
         token = kwargs.get("token")
-        uuid = int(kwargs.get("uuid"))
+        uuid = kwargs.get("uuid")
         comment = request.POST.get('comment')
         if not uuid:
             return JsonResponse(data={"error": "缺少必传参数", "status": 400})
         try:
+            uuid = int(uuid)
             user_obj = User.objects.filter(openid=token).first()
             if not user_obj:
                 return JsonResponse(data={"error": "用户未注册", "status": 401})
@@ -197,10 +200,11 @@ class ReviewDataDel(ListCreateAPIView):
         :return:
         """
         token = kwargs.get("token")
-        uuid = int(kwargs.get("uuid"))
+        uuid = kwargs.get("uuid")
         if not uuid:
             return JsonResponse(data={"error": "缺少必传参数", "status": 400})
         try:
+            uuid = int(uuid)
             user_obj = User.objects.filter(openid=token).first()
             if not user_obj:
                 return JsonResponse(data={"error": "用户未注册", "status": 401})
@@ -341,6 +345,7 @@ def own_videos(request, token, *args, **kwargs):
             for note_obj in notes_set:
                 note_list.append({"note_id": note_obj.id,
                                   "note_time": note_obj.note_time,
+                                  "is_hide": note_obj.is_hide,
                                   "note_path": note_obj.note_path})
             for moment_obj in moment_set:
                 moment_list.append(
@@ -391,12 +396,13 @@ def set_param_moment(request, token, *args, **kwargs):
     :param kwargs:
     :return:
     """
-    uuid = int(kwargs.get("uuid"))
+    uuid = kwargs.get("uuid")
     start_time = request.POST.get('start_time')
     stop_time = request.POST.get('stop_time')
     if not all([uuid, start_time, stop_time]):
         return JsonResponse(data={"error": "缺少必传参数", "status": 400})
     try:
+        uuid = int(uuid)
         user_obj = User.objects.filter(openid=token).first()
         if not user_obj:
             return JsonResponse(data={"error": "用户未注册", "status": 401})
@@ -435,8 +441,8 @@ def video_start(request, token, *args, **kwargs):
         class_obj = Class.objects.filter(id=int(class_id)).first()
         if not class_obj:
             return JsonResponse(data={"error": "该教室不存在", "status": 400})
-        equipment_obj = class_obj.equipment
-        if not class_obj.equipment:
+        equipment_obj = Equipment.objects.filter(class_id=class_obj).first()
+        if not equipment_obj:
             return JsonResponse(data={"error": "该教室未绑定录制设备", "status": 400})
         if equipment_obj.school_id != user_obj.teacher.school_id:
             return JsonResponse(data={"error": "无权操作", "status": 400})
@@ -447,6 +453,8 @@ def video_start(request, token, *args, **kwargs):
         domain = equipment_obj.school_id.domain
         mac_address = equipment_obj.mac_address
         response_data = start_recording(domain, mac_address)
+        if not response_data:
+            return JsonResponse(data={"error": "录制失败请检查硬件设备和网络", "status": 400})
         file_name = response_data.get("file_name", None)
         if not file_name:
             return JsonResponse(data={"error": "录制失败请检查硬件设备和网络", "status": 400})
@@ -465,11 +473,6 @@ def video_start(request, token, *args, **kwargs):
                                   "status": 200})
     except Exception as e:
         logger.error(e)
-        e = str(e)
-        pat = r"Class has no equipment"
-        result = re.findall(pat, e)
-        if result:
-            return JsonResponse(data={"error": "该教室未绑定录制设备", "status": 400})
         return JsonResponse(data={"error": "开始录制失败", "status": 400})
 
 
@@ -496,8 +499,8 @@ def video_stop(request, token, *args, **kwargs):
         class_obj = Class.objects.filter(id=int(class_id)).first()
         if not class_obj:
             return JsonResponse(data={"error": "该教室不存在", "status": 400})
-        equipment_obj = class_obj.equipment
-        if not class_obj.equipment:
+        equipment_obj = Equipment.objects.filter(class_id=class_obj).first()
+        if not equipment_obj:
             return JsonResponse(data={"error": "该教室未绑定录制设备", "status": 400})
         if equipment_obj.school_id != user_obj.teacher.school_id:
             return JsonResponse(data={"error": "无权操作", "status": 400})
@@ -523,11 +526,6 @@ def video_stop(request, token, *args, **kwargs):
                                   "status": 200})
     except Exception as e:
         logger.error(e)
-        e = str(e)
-        pat = r"Class has no equipment"
-        result = re.findall(pat, e)
-        if result:
-            return JsonResponse(data={"error": "该教室未绑定录制设备", "status": 400})
         return JsonResponse(data={"error": "开始录制失败", "status": 400})
 
 
@@ -640,3 +638,37 @@ def get_classes(request, token, *args, **kwargs):
     except Exception as e:
         logger.error(e)
         return JsonResponse(data={"error": "获取教室信息失败", "status": 400})
+
+
+@check_token()
+def is_hide_blackboard(request, token, *args, **kwargs):
+    """
+    教师设置是否隐藏版书
+    :param request:
+    :param token: 用户验证，唯一标识
+    :param args:
+    :param kwargs:
+    :return:
+    """
+    note_id = request.POST.get('note_id')
+    is_hide = request.POST.get('is_hide')
+    if not all([note_id, is_hide]):
+        return JsonResponse(data={"error": "缺少必传参数", "status": 400})
+    try:
+        is_hide = int(is_hide)
+        user_obj = User.objects.filter(openid=token).first()
+        if not user_obj:
+            return JsonResponse(data={"error": "用户未注册", "status": 401})
+        if user_obj.role != "teacher":
+            return JsonResponse(data={"error": "无权操作", "status": 400})
+        note_obj = Note.objects.filter(id=note_id).first()
+        if not note_obj:
+            return JsonResponse(data={"error": "版书不存在", "status": 400})
+        if note_obj.video_id.teacher_id != user_obj.teacher:
+            return JsonResponse(data={"error": "无权操作", "status": 400})
+        note_obj.is_hide = is_hide
+        note_obj.save()
+        return JsonResponse(data={"message": "操作成功", "status": 200})
+    except Exception as e:
+        logger.error(e)
+        return JsonResponse(data={"error": "操作失败", "status": 400})

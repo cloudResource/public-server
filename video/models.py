@@ -23,6 +23,7 @@ class Note(models.Model):
     note_time = models.IntegerField(help_text="版书时间秒", null=True)
     note_path = models.CharField(max_length=100, help_text="版书路径")
     video_id = models.ForeignKey(Video, null=True, db_column="video_id")
+    is_hide = models.BooleanField(default=False, help_text="是否隐藏")
 
     class Meta:
         db_table = "tb_note"

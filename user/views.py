@@ -351,10 +351,11 @@ def get_teacher_data(request, token, *args, **kwargs):
     :param kwargs:
     :return:
     """
-    uuid = int(kwargs.get("uuid"))
+    uuid = kwargs.get("uuid")
     if not uuid:
         return JsonResponse(data={"error": "缺少必传参数", "status": 400})
     try:
+        uuid = int(uuid)
         user_obj = User.objects.filter(openid=token).first()
         if not user_obj:
             return JsonResponse(data={"error": "用户未注册", "status": 401})
@@ -461,11 +462,12 @@ class UnfollowTeachers(DestroyAPIView):
         :return:
         """
         token = kwargs.get("token")
-        uuid = int(kwargs.get("uuid"))
+        uuid = kwargs.get("uuid")
         try:
             user_obj = User.objects.filter(openid=token).first()
             if not user_obj:
                 return JsonResponse(data={"error": "用户未注册", "status": 401})
+            uuid = int(uuid)
             teacher_obj = Teacher.objects.filter(id=uuid).first()
             if not teacher_obj:
                 return JsonResponse(data={"error": "该老师不存在", "status": 400})

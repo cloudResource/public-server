@@ -12,9 +12,12 @@ def start_recording(domain, mac_address):
     """
     url = domain + "/control/v1/video_start"
     data = {"mac_address": mac_address}
-    res = requests.post(url, data=data)
-    response_data = res.json()
-    return response_data
+    try:
+        res = requests.post(url, data=data)
+        response_data = res.json()
+        return response_data
+    except Exception as e:
+        return None
 
 
 
