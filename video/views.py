@@ -389,30 +389,45 @@ def own_videos(request, token, *args, **kwargs):
 @check_token()
 def set_param_moment(request, token, *args, **kwargs):
     """
-    为视频精彩时刻添加参数
+    教师设置精彩时刻
     :param request:
     :param token: 用户验证，唯一标识
     :param args:
     :param kwargs:
     :return:
     """
-    uuid = kwargs.get("uuid")
+    video_id = kwargs.get("uuid")
+    second = request.POST.get("second")
     start_time = request.POST.get('start_time')
     stop_time = request.POST.get('stop_time')
-    if not all([uuid, start_time, stop_time]):
+    if not all([video_id, second, start_time, stop_time]):
         return JsonResponse(data={"error": "缺少必传参数", "status": 400})
     try:
-        uuid = int(uuid)
+        second = int(second)
+        video_id = int(video_id)
         user_obj = User.objects.filter(openid=token).first()
         if not user_obj:
             return JsonResponse(data={"error": "用户未注册", "status": 401})
-        moment_obj = Moment.objects.filter(id=uuid).first()
-        openid = moment_obj.video_id.teacher_id.user_id.openid
-        if openid != token:
+        if user_obj.role != "teacher":
             return JsonResponse(data={"error": "无权操作", "status": 400})
-        moment_obj.start_time = int(start_time)
-        moment_obj.stop_time = int(stop_time)
-        moment_obj.save()
+        video_obj = Video.objects.filter(id=video_id).first()
+        if not video_obj:
+            return JsonResponse(data={"error": "该视频不存在", "status": 400})
+        if video_obj.teacher_id != user_obj.teacher:
+            return JsonResponse(data={"error": "无权操作", "status": 400})
+        domain = video_obj.teacher_id.school_id.domain
+        dir_name = video_obj.file_name
+        response_data = scan_video_image(domain, dir_name, second)
+        if not response_data:
+            return JsonResponse(data={"error": "录制失败请检查硬件设备和网络", "status": 400})
+        image_path = response_data.get("image_path", None)
+        if not image_path:
+            return JsonResponse(data={"error": "录制失败请检查硬件设备和网络", "status": 400})
+        Moment.objects.create(moment_time=second,
+                              moment_path=image_path,
+                              start_time=start_time,
+                              stop_time=stop_time,
+                              video_id=video_obj)
         return JsonResponse(data={"message": "添加成功", "status": 200})
     except Exception as e:
         logger.error(e)
@@ -464,6 +479,7 @@ def video_start(request, token, *args, **kwargs):
         file_path = "/fsdata/videos/" + file_name + "/" + file_name
         image_path = "/fsdata/videos/" + file_name + "/cover.png"
         video_obj = Video.objects.create(video_name=video_name,
+                                         file_name=file_name,
                                          file_path=file_path,
                                          image_path=image_path,
                                          teacher_id=user_obj.teacher)
@@ -672,3 +688,4 @@ def is_hide_blackboard(request, token, *args, **kwargs):
     except Exception as e:
         logger.error(e)
         return JsonResponse(data={"error": "操作失败", "status": 400})
+

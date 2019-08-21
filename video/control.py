@@ -20,6 +20,21 @@ def start_recording(domain, mac_address):
         return None
 
 
+def scan_video_image(domain, dir_name, second):
+    """
+    保存截取的视频图片
+    :mac_address: 设备MAC地址
+    :return:
+    """
+    url = domain + "/control/v1/intercept_image"
+    data = {"dir_name": dir_name, "second": second}
+    try:
+        res = requests.post(url, data=data)
+        response_data = res.json()
+        return response_data
+    except Exception as e:
+        return None
+
 
 def stop_recording(domain, mac_address):
     """

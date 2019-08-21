@@ -55,11 +55,17 @@ def add_teacher(request):
         user_obj = User.objects.filter(mobile=mobile).first()
         if not user_obj:
             return JsonResponse(data={"error": "该账号未注册", "status": 400})
+        teacher = Teacher.objects.filter(user_id=user_obj).first()
+        if teacher:
+            return JsonResponse(data={"error": "请勿重复添加", "status": 400})
         user_obj.username = teacher_name
         user_obj.role = "teacher"
         user_obj.save()
-        Teacher.objects.create(school_id=school_obj, user_id=user_obj)
-        return JsonResponse(data={"message": "添加成功", "status": 200})
+        teacher_obj = Teacher.objects.create(school_id=school_obj, user_id=user_obj)
+        return JsonResponse(data={"data": {"teacher_id": teacher_obj.id,
+                                           "teacher_name": user_obj.username,
+                                           "teacher_mobile": user_obj.mobile},
+                                  "status": 200})
     except Exception as e:
         logger.error(e)
         return JsonResponse(data={"error": "获取数据失败", "status": 400}, status=400)
