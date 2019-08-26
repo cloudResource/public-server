@@ -17,7 +17,7 @@ class User(models.Model):
 
 class Label(models.Model):
     label = models.CharField(max_length=32, null=True, help_text="标签内容")
-    user_id = models.ForeignKey(User, null=True, db_column="user_id")
+    user_id = models.ForeignKey(User, on_delete=models.CASCADE, null=True, db_column="user_id")
 
     class Meta:
         db_table = "tb_label"

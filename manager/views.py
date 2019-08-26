@@ -89,7 +89,10 @@ def del_teacher(request):
         teacher_obj = Teacher.objects.filter(id=teacher_id).first()
         if not teacher_obj:
             return JsonResponse(data={"error": "此教师不存在或已删除", "status": 400})
+        user_obj = teacher_obj.user_id
+        user_obj.role = "user"
         teacher_obj.delete()
+        user_obj.save()
         return JsonResponse(data={"message": "删除成功", "status": 200})
     except Exception as e:
         logger.error(e)
@@ -158,8 +161,14 @@ def add_class(request):
         return JsonResponse(data={"error": "缺少必传参数", "status": 400})
     try:
         admin_school_obj = User.objects.filter(id=admin_user_id).first().school
-        Class.objects.create(school_id=admin_school_obj, class_name=class_name, grade_name=grade_name)
-        return JsonResponse(data={"message": "添加成功", "status": 200})
+        class_obj = Class.objects.filter(class_name=class_name, grade_name=grade_name, school_id=admin_school_obj).first()
+        if class_obj:
+            return JsonResponse(data={"error": "请勿重复添加", "status": 400})
+        class_object = Class.objects.create(school_id=admin_school_obj, class_name=class_name, grade_name=grade_name)
+        return JsonResponse(data={"data": {"class_id": class_object.id,
+                                           "grade_name": class_object.grade_name,
+                                           "class_name": class_object.class_name},
+                                  "status": 200})
     except Exception as e:
         logger.error(e)
         return JsonResponse(data={"error": "添加失败", "status": 400}, status=400)

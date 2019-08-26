@@ -25,9 +25,9 @@ urlpatterns = [
     url(r'^v1/own_videos$', views.own_videos),  # 获取自己的视频
     url(r'^v1/set_param/(?P<uuid>[\w-]+)/moment$', views.set_param_moment),  # 教师设置精彩时刻
     url(r'^v1/video_start$', views.video_start),  # 开始录制视频
-    url(r'^v1/video_stop$', views.video_stop),  # 开始录制视频
+    url(r'^v1/video_stop$', views.video_stop),  # 结束录制视频
     url(r'^v1/video_issue$', views.video_issue),  # 发布视频
     url(r'^v1/video_delete$', views.video_delete),  # 发布视频
-    url(r'^v1/get_classes$', views.get_classes),  # 发布视频
+    url(r'^v1/get_classes$', views.get_classes),  # 录制查询所有教室
     url(r'^v1/blackboard/is_hide$', views.is_hide_blackboard),  # 教师设置是否隐藏版书
 ]
