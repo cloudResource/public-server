@@ -17,13 +17,15 @@ from django.conf.urls import url
 from . import views
 
 urlpatterns = [
-    url(r'^v1/list_video$', views.list_video),  # 列表查询所有视频
-    url(r'^v1/comment/(?P<uuid>[\w-]+)/$', views.ReviewData.as_view()),  # POST: 给某个视频添加一条评论 GET: 获取某个视频所有评论
-    url(r'^v1/comment/(?P<uuid>[\w-]+)/del$', views.ReviewDataDel.as_view()),  # DELETE: 删除某条评论
+    url(r'^v1/video_list$', views.video_list),  # 列表查询所有视频
+    url(r'^v1/(?P<uuid>[\w-]+)/video_details$', views.video_details),  # 查询视频详情
+    url(r'^v1/comment$', views.CommentListCreateView.as_view()),  # POST: 给某个视频添加一条评论 GET: 获取某个视频所有评论
+    url(r'^v1/comment/(?P<uuid>[\w-]+)/$', views.CommentDeleteView.as_view()),  # DELETE: 删除某条评论
     url(r'^v1/attention_videos$', views.attention_videos),  # 获取关注教师的视频
     url(r'^v1/change/video_name$', views.change_video_name),  # 更改视频名称
     url(r'^v1/own_videos$', views.own_videos),  # 获取自己的视频
-    url(r'^v1/set_param/(?P<uuid>[\w-]+)/moment$', views.set_param_moment),  # 教师设置精彩时刻
+    url(r'^v1/moment$', views.MomentCreateView.as_view()),  # POST: 教师设置精彩时刻
+    url(r'^v1/moment/(?P<uuid>[\w-]+)/$', views.MomentDeleteView.as_view()),  # DELETE: 教师删除精彩时刻
     url(r'^v1/video_start$', views.video_start),  # 开始录制视频
     url(r'^v1/video_stop$', views.video_stop),  # 结束录制视频
     url(r'^v1/video_issue$', views.video_issue),  # 发布视频

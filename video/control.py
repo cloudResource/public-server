@@ -45,6 +45,7 @@ def stop_recording(domain, file_name, mac_address):
     :return:
     """
     url = "http://" + domain + "/control/v1/video_stop"
+    # url = "http://" + "10.0.100.79:8001" + "/control/v1/video_stop"
     data = {"mac_address": mac_address, "video_file": file_name}
     res = requests.post(url, data=data)
     response_data = res.json()

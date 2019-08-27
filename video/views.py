@@ -1,7 +1,6 @@
 from django.http import JsonResponse
-from rest_framework.generics import ListCreateAPIView
+from rest_framework.generics import ListCreateAPIView, DestroyAPIView, CreateAPIView
 
-from celery_tasks.video.tasks import save_video
 # Create your views here.
 from manager.models import *
 from user.models import User
@@ -14,7 +13,7 @@ logger = logging.getLogger("django")
 
 
 @check_token()
-def list_video(request, token, *args, **kwargs):
+def video_list(request, token, *args, **kwargs):
     """
     查看所有视频信息
     :param request:
@@ -25,7 +24,7 @@ def list_video(request, token, *args, **kwargs):
         user = User.objects.filter(openid=token).first()
         if not user:
             return JsonResponse(data={"error": "用户未注册", "status": 401})
-        videos_obj = Video.objects.filter(is_delete=False, teacher_id=not None)
+        videos_obj = Video.objects.filter(is_delete=False, is_issue=True).order_by("-id")
         for video in videos_obj:
             video_dict = dict()
             note_list = list()
@@ -80,11 +79,11 @@ def list_video(request, token, *args, **kwargs):
         return JsonResponse(data={"error": "获取数据失败", "status": 400})
 
 
-class ReviewData(ListCreateAPIView):
+class CommentListCreateView(ListCreateAPIView):
     """
     METHOD: 请求方法
-        get: 给某个视频添加一条评论
-        post: 获取某个视频所有评论
+        post: 给某个视频添加一条评论
+        get: 获取某个视频所有评论
     """
 
     @drf_check_token()
@@ -97,11 +96,11 @@ class ReviewData(ListCreateAPIView):
         :return:
         """
         token = kwargs.get("token")
-        uuid = kwargs.get("uuid")
-        if not uuid:
+        video_id = kwargs.get("video_id")
+        if not video_id:
             return JsonResponse(data={"error": "缺少必传参数", "status": 400})
         try:
-            uuid = int(uuid)
+            uuid = int(video_id)
             user_obj = User.objects.filter(openid=token).first()
             if not user_obj:
                 return JsonResponse(data={"error": "用户未注册", "status": 401})
@@ -184,7 +183,7 @@ class ReviewData(ListCreateAPIView):
             return JsonResponse(data={"error": "发布评论失败", "status": 400}, status=400)
 
 
-class ReviewDataDel(ListCreateAPIView):
+class CommentDeleteView(DestroyAPIView):
     """
     METHOD: 请求方法
         delete: 删除某条评论
@@ -215,6 +214,98 @@ class ReviewDataDel(ListCreateAPIView):
                 return JsonResponse(data={"error": "无权操作", "status": 400})
             comment_obj.delete()
             return JsonResponse(data={"data": {"message": "删除评论成功", "status": 200}})
+        except Exception as e:
+            logger.error(e)
+            return JsonResponse(data={"error": "删除评论失败", "status": 400}, status=400)
+
+
+class MomentCreateView(CreateAPIView):
+    """
+    METHOD: 请求方法
+        post: 教师新增精彩时刻
+    """
+
+    @drf_check_token()
+    def post(self, request, *args, **kwargs):
+        """
+        教师新增精彩时刻
+        :param request:
+        :param args:
+        :param kwargs:
+        :return:
+        """
+        token = kwargs.get("token")
+        video_id = request.POST.get("video_id")
+        second = request.POST.get("second")
+        start_time = request.POST.get('start_time')
+        stop_time = request.POST.get('stop_time')
+        if not all([video_id, second, start_time, stop_time]):
+            return JsonResponse(data={"error": "缺少必传参数", "status": 400})
+        try:
+            second = int(second)
+            video_id = int(video_id)
+            user_obj = User.objects.filter(openid=token).first()
+            if not user_obj:
+                return JsonResponse(data={"error": "用户未注册", "status": 401})
+            if user_obj.role != "teacher":
+                return JsonResponse(data={"error": "无权操作", "status": 400})
+            video_obj = Video.objects.filter(id=video_id).first()
+            if not video_obj:
+                return JsonResponse(data={"error": "该视频不存在", "status": 400})
+            if video_obj.teacher_id != user_obj.teacher:
+                return JsonResponse(data={"error": "无权操作", "status": 400})
+            domain = video_obj.teacher_id.school_id.domain
+            dir_name = video_obj.file_name
+            response_data = scan_video_image(domain, dir_name, second)
+            if not response_data:
+                return JsonResponse(data={"error": "设置失败请检查硬件设备和网络", "status": 400})
+            image_path = response_data.get("image_path", None)
+            if not image_path:
+                return JsonResponse(data={"error": "设置失败请检查硬件设备和网络", "status": 400})
+            moment_obj = Moment.objects.create(moment_time=second,
+                                               moment_path=image_path,
+                                               start_time=start_time,
+                                               stop_time=stop_time,
+                                               video_id=video_obj)
+            return JsonResponse(data={"data": {"id": moment_obj.id,
+                                               "image_path": moment_obj.moment_path},
+                                      "status": 200})
+        except Exception as e:
+            logger.error(e)
+            return JsonResponse(data={"error": "添加失败", "status": 400})
+
+
+class MomentDeleteView(DestroyAPIView):
+    """
+    METHOD: 请求方法
+        delete: 教师删除精彩时刻
+    """
+
+    @drf_check_token()
+    def delete(self, request, *args, **kwargs):
+        """
+        教师删除精彩时刻
+        :param request:
+        :param args:
+        :param kwargs:
+        :return:
+        """
+        token = kwargs.get("token")
+        moment_id = kwargs.get("uuid")
+        if not all([token, moment_id]):
+            return JsonResponse(data={"error": "缺少必传参数", "status": 400})
+        try:
+            moment_id = int(moment_id)
+            user_obj = User.objects.filter(openid=token).first()
+            if not user_obj:
+                return JsonResponse(data={"error": "用户未注册", "status": 401})
+            moment_obj = Moment.objects.filter(id=moment_id).first()
+            if not moment_obj:
+                return JsonResponse(data={"error": "该回看不存在", "status": 400})
+            if moment_obj.video_id.teacher_id.user_id.openid != token:
+                return JsonResponse(data={"error": "无权操作", "status": 400})
+            moment_obj.delete()
+            return JsonResponse(data={"data": {"message": "删除回看成功", "status": 200}})
         except Exception as e:
             logger.error(e)
             return JsonResponse(data={"error": "删除评论失败", "status": 400}, status=400)
@@ -331,7 +422,7 @@ def own_videos(request, token, *args, **kwargs):
             return JsonResponse(data={"error": "用户未注册", "status": 401})
         if user_obj.role != "teacher":
             return JsonResponse(data={"error": "角色不匹配，无权查看", "status": 400})
-        video_set = Video.objects.filter(teacher_id=user_obj.teacher, is_delete=False)
+        video_set = Video.objects.filter(teacher_id=user_obj.teacher, is_delete=False).order_by("-id")
         for video_obj in video_set:
             video_dict = dict()
             note_list = list()
@@ -384,56 +475,6 @@ def own_videos(request, token, *args, **kwargs):
     except Exception as e:
         logger.error(e)
         return JsonResponse(data={"error": "获取数据失败", "status": 400})
-
-
-@check_token()
-def set_param_moment(request, token, *args, **kwargs):
-    """
-    教师设置精彩时刻
-    :param request:
-    :param token: 用户验证，唯一标识
-    :param args:
-    :param kwargs:
-    :return:
-    """
-    video_id = kwargs.get("uuid")
-    second = request.POST.get("second")
-    start_time = request.POST.get('start_time')
-    stop_time = request.POST.get('stop_time')
-    if not all([video_id, second, start_time, stop_time]):
-        return JsonResponse(data={"error": "缺少必传参数", "status": 400})
-    try:
-        second = int(second)
-        video_id = int(video_id)
-        user_obj = User.objects.filter(openid=token).first()
-        if not user_obj:
-            return JsonResponse(data={"error": "用户未注册", "status": 401})
-        if user_obj.role != "teacher":
-            return JsonResponse(data={"error": "无权操作", "status": 400})
-        video_obj = Video.objects.filter(id=video_id).first()
-        if not video_obj:
-            return JsonResponse(data={"error": "该视频不存在", "status": 400})
-        if video_obj.teacher_id != user_obj.teacher:
-            return JsonResponse(data={"error": "无权操作", "status": 400})
-        domain = video_obj.teacher_id.school_id.domain
-        dir_name = video_obj.file_name
-        response_data = scan_video_image(domain, dir_name, second)
-        if not response_data:
-            return JsonResponse(data={"error": "设置失败请检查硬件设备和网络", "status": 400})
-        image_path = response_data.get("image_path", None)
-        if not image_path:
-            return JsonResponse(data={"error": "设置失败请检查硬件设备和网络", "status": 400})
-        moment_obj = Moment.objects.create(moment_time=second,
-                              moment_path=image_path,
-                              start_time=start_time,
-                              stop_time=stop_time,
-                              video_id=video_obj)
-        return JsonResponse(data={"data": {"id": moment_obj.id,
-                                           "image_path": moment_obj.moment_path},
-                                  "status": 200})
-    except Exception as e:
-        logger.error(e)
-        return JsonResponse(data={"error": "添加失败", "status": 400})
 
 
 @check_token()
@@ -709,11 +750,66 @@ def video_details(request, token, *args, **kwargs):
     :param kwargs:
     :return:
     """
+    video_id = kwargs.get("uuid")
+    if not video_id:
+        return JsonResponse(data={"error": "缺少必传参数", "status": 400})
     try:
         user_obj = User.objects.filter(openid=token).first()
         if not user_obj:
             return JsonResponse(data={"error": "用户未注册", "status": 401})
-        return JsonResponse(data={"message": "操作成功", "status": 200})
+        video_obj = Video.objects.filter(id=video_id).first()
+        if not video_obj:
+            return JsonResponse(data={"error": "该视频不存在", "status": 400})
+        data = dict()
+        video_dict = dict()
+        note_list = list()
+        moment_list = list()
+        label_list = list()
+        notes_set = video_obj.note_set.order_by('note_time').all()
+        moment_set = video_obj.moment_set.all()
+        label_set = video_obj.teacher_id.user_id.label_set.all()
+        for label_obj in label_set:
+            label_list.append({"label": label_obj.label})
+        for note_obj in notes_set:
+            note_list.append({"note_id": note_obj.id,
+                              "note_time": note_obj.note_time,
+                              "is_hide": note_obj.is_hide,
+                              "note_path": note_obj.note_path})
+        for moment_obj in moment_set:
+            moment_list.append(
+                {"moment_id": moment_obj.id,
+                 "moment_time": moment_obj.moment_time,
+                 "start_time": moment_obj.start_time,
+                 "stop_time": moment_obj.stop_time,
+                 "moment_path": moment_obj.moment_path})
+        teacher_obj = video_obj.teacher_id
+        teacher_id = teacher_obj.id
+        teacher_name = teacher_obj.user_id.username
+        teacher_school = teacher_obj.school_id.school_name
+        relation_user_obj = RelationUser.objects.filter(teacher_id=teacher_obj, user_id=user_obj).first()
+        if relation_user_obj:
+            is_attention = True
+        else:
+            is_attention = False
+        teacher_dict = {"teacher_id": teacher_id,
+                        "teacher_name": teacher_name,
+                        "teacher_school": teacher_school,
+                        "is_attention": is_attention}
+        video_dict["video_id"] = video_obj.id
+        video_dict["video_name"] = video_obj.video_name
+        video_dict["is_issue"] = video_obj.is_issue
+        video_dict["file_path"] = video_obj.file_path
+        video_dict["teacher_data"] = teacher_dict
+        video_dict["image_path"] = video_obj.image_path
+        video_dict["video_status"] = video_obj.status
+        video_dict["domain"] = video_obj.teacher_id.school_id.domain
+        video_dict["video_notes"] = note_list
+        video_dict["video_moments"] = moment_list
+        video_dict["label_list"] = label_list
+        data["data"] = video_dict
+        data["status"] = 200
+        return JsonResponse(data=data)
+
     except Exception as e:
         logger.error(e)
         return JsonResponse(data={"error": "获取数据失败", "status": 400})

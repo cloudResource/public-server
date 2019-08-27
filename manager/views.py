@@ -2,7 +2,6 @@ import re
 
 from django.http import JsonResponse, HttpResponse
 import xlrd
-import pandas
 from django.utils.http import urlquote
 
 from manager.models import Teacher, Class, Project
