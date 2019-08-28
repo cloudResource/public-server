@@ -364,18 +364,11 @@ def get_teacher_data(request, token, *args, **kwargs):
             return JsonResponse(data={"error": "该老师不存在", "status": 400})
         data = dict()
         label_list = list()
-        video_list = list()
         for label_obj in teacher_obj.user_id.label_set.all():
             label_list.append({"label": label_obj.label})
-        for video_obj in teacher_obj.video_set.all():
-            video_list.append({"video_name": video_obj.video_name,
-                               "is_delete": video_obj.is_delete,
-                               "status": video_obj.status,
-                               "image_path": video_obj.image_path,
-                               "end_time": video_obj.end_time})
+        data["teacher_id"] = teacher_obj.id
         data["name"] = teacher_obj.user_id.username
         data["label"] = label_list
-        data["video"] = video_list
         return JsonResponse(data={"data": data, "status": 200})
 
     except Exception as e:

@@ -53,7 +53,7 @@ class Equipment(models.Model):
     mac_address = models.CharField(max_length=100, unique=True, null=True, help_text="设备mac地址")
     teacher_id = models.ForeignKey(Teacher, on_delete=models.SET_NULL, null=True, db_column="teacher_id")
     class_id = models.OneToOneField(Class, on_delete=models.SET_NULL, blank=True, null=True, db_column="class_id")
-    status = models.BooleanField(default=False, help_text="设备的状态")
+    status = models.CharField(max_length=16, default="available", help_text="设备的状态")  # available: 可用, in_use: 使用中, in_end: 结束中
     real_url = models.CharField(max_length=100, null=True, help_text="实时视频地址")
     school_id = models.ForeignKey(School, null=True, db_column="school_id")  # 设备所属学校
 
