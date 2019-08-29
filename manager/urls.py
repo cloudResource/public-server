@@ -25,6 +25,11 @@ urlpatterns = [
     url(r'^v1/get_classes$', views.get_classes),  # 查询所有班级
     url(r'^v1/add_class$', views.add_class),  # 添加班级
     url(r'^v1/add_class/batch$', views.batch_add_class),  # 批量添加班级
+    url(r'^v1/get_equipments$', views.get_equipments),  # 查询所有设备
+    url(r'^v1/classroom/available$', views.available_classrooms),  # 查询所有未绑定设备的教室
+    url(r'^v1/equipment/available$', views.available_equipments),  # 查询所有未绑定教室的设备
+    url(r'^v1/equipment/(?P<uuid>[\w-]+)/attach_classroom$', views.attach_classroom),  # 设备绑定教室
+    url(r'^v1/equipment/(?P<uuid>[\w-]+)/detach_classroom$', views.detach_classroom),  # 设备解绑教室
     url(r'^v1/file_down$', views.file_down),  # 下载批量模板
     url(r'^v1/get_projects$', views.get_projects),  # 查询项目信息
     url(r'^v1/login$', views.login),  # 学校管理员登录

@@ -520,9 +520,10 @@ def video_start(request, token, *args, **kwargs):
         equipment_obj.status = "in_use"
         equipment_obj.teacher_id = user_obj.teacher
         video_date = int(time.time())
+        video_date_str = custom_time(video_date)
         file_path = "/fsdata/videos/" + file_name + "/" + file_name
         image_path = "/fsdata/videos/" + file_name + "/cover.png"
-        video_obj = Video.objects.create(video_name=video_date,
+        video_obj = Video.objects.create(video_name=video_date_str,
                                          file_name=file_name,
                                          file_path=file_path,
                                          image_path=image_path,
@@ -567,8 +568,6 @@ def video_stop(request, token, *args, **kwargs):
             return JsonResponse(data={"error": "无权操作", "status": 400})
         if equipment_obj.status != "in_use":
             return JsonResponse(data={"error": "结束录制失败，该教室不在录制中", "status": 400})
-        equipment_obj.status = "in_end"
-        equipment_obj.save()
         domain = equipment_obj.school_id.domain
         mac_address = equipment_obj.mac_address
         video_obj = Video.objects.filter(id=video_id).first()

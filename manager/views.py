@@ -4,7 +4,7 @@ from django.http import JsonResponse, HttpResponse
 import xlrd
 from django.utils.http import urlquote
 
-from manager.models import Teacher, Class, Project
+from manager.models import Teacher, Class, Project, Equipment
 from user.models import User
 import logging
 # Create your views here.
@@ -144,7 +144,7 @@ def get_classes(request):
         return JsonResponse(data)
     except Exception as e:
         logger.error(e)
-        return JsonResponse(data={"error": "添加失败", "status": 400}, status=400)
+        return JsonResponse(data={"error": "获取数据失败", "status": 400}, status=400)
 
 
 @check_login()
@@ -160,7 +160,8 @@ def add_class(request):
         return JsonResponse(data={"error": "缺少必传参数", "status": 400})
     try:
         admin_school_obj = User.objects.filter(id=admin_user_id).first().school
-        class_obj = Class.objects.filter(class_name=class_name, grade_name=grade_name, school_id=admin_school_obj).first()
+        class_obj = Class.objects.filter(class_name=class_name, grade_name=grade_name,
+                                         school_id=admin_school_obj).first()
         if class_obj:
             return JsonResponse(data={"error": "请勿重复添加", "status": 400})
         class_object = Class.objects.create(school_id=admin_school_obj, class_name=class_name, grade_name=grade_name)
@@ -272,6 +273,154 @@ def batch_add_class(request):
     except Exception as e:
         logger.error(e)
         return JsonResponse(data={"error": "添加失败", "status": 400}, status=400)
+
+
+@check_login()
+def get_equipments(request):
+    """
+    查询所有设备
+    :param request:
+    :return:
+    """
+    admin_user_id = request.session.get('user_id')
+    try:
+        school_obj = User.objects.filter(id=admin_user_id).first().school
+        equipment_set = Equipment.objects.filter(school_id=school_obj)
+        data = {"data": []}
+        for equipment_obj in equipment_set:
+            class_dict = dict()
+            equipment_id = equipment_obj.id
+            mac_address = equipment_obj.mac_address
+            if equipment_obj.class_id is not None:
+                class_dict["id"] = equipment_obj.class_id.id
+                class_dict["class"] = equipment_obj.class_id.grade_name + equipment_obj.class_id.class_name
+            equipment_dict = {"equipment_id": equipment_id,
+                              "mac_address": mac_address,
+                              "class_data": class_dict}
+            data["data"].append(equipment_dict)
+        data["status"] = 200
+        return JsonResponse(data)
+    except Exception as e:
+        logger.error(e)
+        return JsonResponse(data={"error": "获取数据失败", "status": 400}, status=400)
+
+
+@check_login()
+def available_equipments(request):
+    """
+    查询所有未绑定教室的设备
+    :param request:
+    :return:
+    """
+    admin_user_id = request.session.get('user_id')
+    try:
+        school_obj = User.objects.filter(id=admin_user_id).first().school
+        equipment_set = Equipment.objects.filter(school_id=school_obj, class_id=None)
+        data = {"data": []}
+        for equipment_obj in equipment_set:
+            equipment_id = equipment_obj.id
+            mac_address = equipment_obj.mac_address
+            equipment_dict = {"equipment_id": equipment_id,
+                              "mac_address": mac_address, }
+            data["data"].append(equipment_dict)
+        data["status"] = 200
+        return JsonResponse(data)
+    except Exception as e:
+        logger.error(e)
+        return JsonResponse(data={"error": "获取数据失败", "status": 400}, status=400)
+
+
+@check_login()
+def available_classrooms(request):
+    """
+    查询所有未绑定设备的教室
+    :param request:
+    :return:
+    """
+    admin_user_id = request.session.get('user_id')
+    data = {"data": []}
+    try:
+        admin_school_obj = User.objects.filter(id=admin_user_id).first().school
+        class_set = Class.objects.filter(school_id=admin_school_obj, equipment=None)
+        for class_obj in class_set:
+            class_dict = dict()
+            equipment_obj = Equipment.objects.filter(class_id=class_obj).first()
+            if equipment_obj:
+                continue
+            class_dict["class_id"] = class_obj.id
+            class_dict["class_name"] = class_obj.class_name
+            class_dict["grade_name"] = class_obj.grade_name
+            data["data"].append(class_dict)
+        data["status"] = 200
+        return JsonResponse(data)
+    except Exception as e:
+        logger.error(e)
+        return JsonResponse(data={"error": "获取数据失败", "status": 400}, status=400)
+
+
+@check_login()
+def attach_classroom(request, *args, **kwargs):
+    """
+    设备绑定教室
+    :param request:
+    :return:
+    """
+    admin_user_id = request.session.get('user_id')
+    equipment_id = kwargs.get("uuid")
+    class_id = request.POST.get('class_id')
+    if not all([equipment_id, class_id]):
+        return JsonResponse(data={"error": "缺少必传参数", "status": 400})
+    try:
+        admin_school_obj = User.objects.filter(id=admin_user_id).first().school
+        equipment_obj = Equipment.objects.filter(id=equipment_id).first()
+        if not equipment_obj:
+            return JsonResponse(data={"error": "此设备不存在", "status": 400})
+        if equipment_obj.school_id != admin_school_obj:
+            return JsonResponse(data={"error": "无权操作", "status": 400})
+        if equipment_obj.class_id is not None:
+            return JsonResponse(data={"error": "该设备已绑定教室，如需更改请先解除绑定", "status": 400})
+        class_obj = Class.objects.filter(id=class_id).first()
+        if not class_obj:
+            return JsonResponse(data={"error": "此教室不存在", "status": 400})
+        if class_obj.school_id != admin_school_obj:
+            return JsonResponse(data={"error": "无权操作", "status": 400})
+        equipment_object = Equipment.objects.filter(school_id=admin_school_obj, class_id=class_obj).first()
+        if equipment_object:
+            return JsonResponse(data={"error": "该教室已绑定设备，如需更改请先解除绑定", "status": 400})
+        equipment_obj.class_id = class_obj
+        equipment_obj.save()
+        return JsonResponse(data={"message": "绑定成功", "status": 200})
+    except Exception as e:
+        logger.error(e)
+        return JsonResponse(data={"error": "绑定失败", "status": 400}, status=400)
+
+
+@check_login()
+def detach_classroom(request, *args, **kwargs):
+    """
+    设备解绑教室
+    :param request:
+    :return:
+    """
+    admin_user_id = request.session.get('user_id')
+    equipment_id = kwargs.get("uuid")
+    if not equipment_id:
+        return JsonResponse(data={"error": "缺少必传参数", "status": 400})
+    try:
+        admin_school_obj = User.objects.filter(id=admin_user_id).first().school
+        equipment_obj = Equipment.objects.filter(id=equipment_id).first()
+        if not equipment_obj:
+            return JsonResponse(data={"error": "此设备不存在", "status": 400})
+        if equipment_obj.school_id != admin_school_obj:
+            return JsonResponse(data={"error": "无权操作", "status": 400})
+        if equipment_obj.class_id is None:
+            return JsonResponse(data={"error": "该设备未绑定教室", "status": 400})
+        equipment_obj.class_id = None
+        equipment_obj.save()
+        return JsonResponse(data={"message": "解绑成功", "status": 200})
+    except Exception as e:
+        logger.error(e)
+        return JsonResponse(data={"error": "解绑失败", "status": 400}, status=400)
 
 
 def get_projects(request):
