@@ -32,6 +32,7 @@ urlpatterns = [
     url(r'^v1/equipment/(?P<uuid>[\w-]+)/detach_classroom$', views.detach_classroom),  # 设备解绑教室
     url(r'^v1/file_down$', views.file_down),  # 下载批量模板
     url(r'^v1/get_projects$', views.get_projects),  # 查询项目信息
+    url(r'^v1/project_data', views.project_data),  # 查询项目信息
     url(r'^v1/login$', views.login),  # 学校管理员登录
     url(r'^v1/logout$', views.logout),  # 学校管理员退出
 ]

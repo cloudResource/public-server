@@ -13,10 +13,11 @@ logger = logging.getLogger("django")
 
 
 @check_token()
-def video_list(request, token, *args, **kwargs):
+def video_list(request, token):
     """
     查看所有视频信息
     :param request:
+    :param token: 用户验证，唯一标识
     :return:
     """
     data = {"data": []}
@@ -24,7 +25,7 @@ def video_list(request, token, *args, **kwargs):
         user = User.objects.filter(openid=token).first()
         if not user:
             return JsonResponse(data={"error": "用户未注册", "status": 401})
-        videos_obj = Video.objects.filter(is_delete=False, is_issue=True).order_by("-id")
+        videos_obj = Video.objects.filter(is_delete=False, is_issue=True, status=True).order_by("-id")
         for video in videos_obj:
             video_dict = dict()
             note_list = list()
@@ -39,7 +40,8 @@ def video_list(request, token, *args, **kwargs):
                 note_list.append({"note_id": note_obj.id,
                                   "note_time": note_obj.note_time,
                                   "is_hide": note_obj.is_hide,
-                                  "note_path": note_obj.note_path})
+                                  "note_path": note_obj.note_path,
+                                  "note_thumb_path": note_obj.note_thumb_path})
             for moment_obj in moment_set:
                 moment_list.append(
                     {"moment_id": moment_obj.id,
@@ -313,13 +315,11 @@ class MomentDeleteView(DestroyAPIView):
 
 
 @check_token()
-def change_video_name(request, token, *args, **kwargs):
+def change_video_name(request, token):
     """
     更改视频名字
     :param request:
     :param token: 用户验证，唯一标识
-    :param args:
-    :param kwargs:
     :return:
     """
     video_name = request.POST.get('video_name')
@@ -345,13 +345,11 @@ def change_video_name(request, token, *args, **kwargs):
 
 
 @check_token()
-def attention_videos(request, token, *args, **kwargs):
+def attention_videos(request, token):
     """
     获取关注教师的视频
     :param request:
     :param token: 用户验证，唯一标识
-    :param args:
-    :param kwargs:
     :return:
     """
     data = {"data": []}
@@ -361,7 +359,10 @@ def attention_videos(request, token, *args, **kwargs):
             return JsonResponse(data={"error": "用户未注册", "status": 401})
         teacher_set = RelationUser.objects.filter(user_id=user_obj)
         for teacher_obj in teacher_set:
-            video_set = Video.objects.filter(teacher_id=teacher_obj.teacher_id)
+            video_set = Video.objects.filter(teacher_id=teacher_obj.teacher_id,
+                                             is_delete=False,
+                                             is_issue=True,
+                                             status=True)
             for video_obj in video_set:
                 video_dict = dict()
                 note_list = list()
@@ -375,7 +376,9 @@ def attention_videos(request, token, *args, **kwargs):
                 for note_obj in notes_set:
                     note_list.append({"note_id": note_obj.id,
                                       "note_time": note_obj.note_time,
-                                      "note_path": note_obj.note_path})
+                                      "is_hide": note_obj.is_hide,
+                                      "note_path": note_obj.note_path,
+                                      "note_thumb_path": note_obj.note_thumb_path})
                 for moment_obj in moment_set:
                     moment_list.append(
                         {"moment_id": moment_obj.id,
@@ -408,13 +411,11 @@ def attention_videos(request, token, *args, **kwargs):
 
 
 @check_token()
-def own_videos(request, token, *args, **kwargs):
+def own_videos(request, token):
     """
     获取自己的视频（教师）
     :param request:
     :param token: 用户验证，唯一标识
-    :param args:
-    :param kwargs:
     :return:
     """
     data = {"data": []}
@@ -424,7 +425,7 @@ def own_videos(request, token, *args, **kwargs):
             return JsonResponse(data={"error": "用户未注册", "status": 401})
         if user_obj.role != "teacher":
             return JsonResponse(data={"error": "角色不匹配，无权查看", "status": 400})
-        video_set = Video.objects.filter(teacher_id=user_obj.teacher, is_delete=False).order_by("-id")
+        video_set = Video.objects.filter(teacher_id=user_obj.teacher, is_delete=False, status=True).order_by("-id")
         for video_obj in video_set:
             video_dict = dict()
             note_list = list()
@@ -439,7 +440,8 @@ def own_videos(request, token, *args, **kwargs):
                 note_list.append({"note_id": note_obj.id,
                                   "note_time": note_obj.note_time,
                                   "is_hide": note_obj.is_hide,
-                                  "note_path": note_obj.note_path})
+                                  "note_path": note_obj.note_path,
+                                  "note_thumb_path": note_obj.note_thumb_path})
             for moment_obj in moment_set:
                 moment_list.append(
                     {"moment_id": moment_obj.id,
@@ -481,13 +483,11 @@ def own_videos(request, token, *args, **kwargs):
 
 
 @check_token()
-def video_start(request, token, *args, **kwargs):
+def video_start(request, token):
     """
     开始录制视频
     :param request:
     :param token: 用户验证，唯一标识
-    :param args:
-    :param kwargs:
     :return:
     """
     class_id = request.POST.get('class_id')
@@ -539,13 +539,11 @@ def video_start(request, token, *args, **kwargs):
 
 
 @check_token()
-def video_stop(request, token, *args, **kwargs):
+def video_stop(request, token):
     """
     结束录制视频
     :param request:
     :param token: 用户验证，唯一标识
-    :param args:
-    :param kwargs:
     :return:
     """
     class_id = request.POST.get('class_id')
@@ -582,8 +580,12 @@ def video_stop(request, token, *args, **kwargs):
         note_path_list = response_data.get("data").get("note_path")
         for i in note_path_list:
             note_path = i.get("note_path")
+            note_thumb_path = i.get("note_thumb_path")
             note_time = i.get("note_time")
-            Note.objects.create(note_time=note_time, note_path=note_path, video_id=video_obj)
+            Note.objects.create(note_time=note_time,
+                                note_path=note_path,
+                                note_thumb_path=note_thumb_path,
+                                video_id=video_obj)
         equipment_obj.status = "available"
         equipment_obj.teacher_id = None
         video_obj.status = True
@@ -598,13 +600,11 @@ def video_stop(request, token, *args, **kwargs):
 
 
 @check_token()
-def video_issue(request, token, *args, **kwargs):
+def video_issue(request, token):
     """
     发布视频功能
     :param request:
     :param token: 用户验证，唯一标识
-    :param args:
-    :param kwargs:
     :return:
     """
     video_id = request.POST.get('video_id')
@@ -630,13 +630,11 @@ def video_issue(request, token, *args, **kwargs):
 
 
 @check_token()
-def video_delete(request, token, *args, **kwargs):
+def video_delete(request, token):
     """
     删除视频功能
     :param request:
     :param token: 用户验证，唯一标识
-    :param args:
-    :param kwargs:
     :return:
     """
     video_id = request.POST.get('video_id')
@@ -662,13 +660,11 @@ def video_delete(request, token, *args, **kwargs):
 
 
 @check_token()
-def get_classes(request, token, *args, **kwargs):
+def get_classes(request, token):
     """
     教师录制获取所有教室
     :param request:
     :param token: 用户验证，唯一标识
-    :param args:
-    :param kwargs:
     :return:
     """
     data = {"data": []}
@@ -715,13 +711,11 @@ def get_classes(request, token, *args, **kwargs):
 
 
 @check_token()
-def is_hide_blackboard(request, token, *args, **kwargs):
+def is_hide_blackboard(request, token):
     """
     教师设置是否隐藏版书
     :param request:
     :param token: 用户验证，唯一标识
-    :param args:
-    :param kwargs:
     :return:
     """
     note_id = request.POST.get('note_id')
@@ -782,7 +776,8 @@ def video_details(request, token, *args, **kwargs):
             note_list.append({"note_id": note_obj.id,
                               "note_time": note_obj.note_time,
                               "is_hide": note_obj.is_hide,
-                              "note_path": note_obj.note_path})
+                              "note_path": note_obj.note_path,
+                              "note_thumb_path": note_obj.note_thumb_path})
         for moment_obj in moment_set:
             moment_list.append(
                 {"moment_id": moment_obj.id,
@@ -828,7 +823,6 @@ def video_share(request, *args, **kwargs):
     """
     查询分享的视频信息，无token验证
     :param request:
-    :param token:
     :param args:
     :param kwargs:
     :return:
@@ -854,7 +848,8 @@ def video_share(request, *args, **kwargs):
             note_list.append({"note_id": note_obj.id,
                               "note_time": note_obj.note_time,
                               "is_hide": note_obj.is_hide,
-                              "note_path": note_obj.note_path})
+                              "note_path": note_obj.note_path,
+                              "note_thumb_path": note_obj.note_thumb_path})
         for moment_obj in moment_set:
             moment_list.append(
                 {"moment_id": moment_obj.id,
@@ -895,6 +890,7 @@ def teacher_video_list(request, token, *args, **kwargs):
     """
     查看某个教师的所有视频
     :param request:
+    :param token: 用户验证，唯一标识
     :return:
     """
     data = {"data": []}
@@ -908,6 +904,7 @@ def teacher_video_list(request, token, *args, **kwargs):
             return JsonResponse(data={"error": "该教师不存在", "status": 400})
         videos_obj = Video.objects.filter(teacher_id=teacher_object,
                                           is_delete=False,
+                                          status=True,
                                           is_issue=True).order_by("-id")
         for video in videos_obj:
             video_dict = dict()
@@ -923,7 +920,8 @@ def teacher_video_list(request, token, *args, **kwargs):
                 note_list.append({"note_id": note_obj.id,
                                   "note_time": note_obj.note_time,
                                   "is_hide": note_obj.is_hide,
-                                  "note_path": note_obj.note_path})
+                                  "note_path": note_obj.note_path,
+                                  "note_thumb_path": note_obj.note_thumb_path})
             for moment_obj in moment_set:
                 moment_list.append(
                     {"moment_id": moment_obj.id,

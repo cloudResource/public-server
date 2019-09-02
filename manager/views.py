@@ -1,5 +1,7 @@
 import re
 
+import requests
+
 from django.http import JsonResponse, HttpResponse
 import xlrd
 from django.utils.http import urlquote
@@ -136,9 +138,15 @@ def get_classes(request):
         class_set = Class.objects.filter(school_id=admin_school_obj)
         for class_obj in class_set:
             class_dict = dict()
+            equipment_dict = dict()
+            equipment_obj = Equipment.objects.filter(class_id=class_obj).first()
+            if equipment_obj:
+                equipment_dict["id"] = equipment_obj.id
+                equipment_dict["mac_address"] = equipment_obj.mac_address
             class_dict["class_id"] = class_obj.id
             class_dict["class_name"] = class_obj.class_name
             class_dict["grade_name"] = class_obj.grade_name
+            class_dict["equipment_data"] = equipment_dict
             data["data"].append(class_dict)
         data["status"] = 200
         return JsonResponse(data)
@@ -442,6 +450,32 @@ def get_projects(request):
                             "app_secret": app_secret}
             project_list.append(project_dict)
         return JsonResponse(data={"data": project_list, "status": 200})
+    except Exception as e:
+        logger.error(e)
+        return JsonResponse(data={"error": "获取数据失败", "status": 400}, status=400)
+
+
+def project_data(request):
+    """
+    获取项目相关信息
+
+    """
+    code = request.POST.get('code')
+    if not code:
+        return JsonResponse(data={"error": "缺少必传参数", "status": 400})
+    try:
+        url = "https://api.weixin.qq.com/sns/jscode2session"
+        params = {"appid": "wxf5fd6346432afcca",
+                  "grant_type": "authorization_code",
+                  "js_code": code,
+                  "secret": "d723af86427df52f50d19c4be95cc071"}
+
+        res = requests.get(url, params=params)
+        response_data = res.json()
+        session_key = response_data["session_key"]
+        openid = response_data["openid"]
+        return JsonResponse(data={"data": {"session_key": session_key, "openid": openid}, "status": 200})
+
     except Exception as e:
         logger.error(e)
         return JsonResponse(data={"error": "获取数据失败", "status": 400}, status=400)

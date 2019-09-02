@@ -10,7 +10,7 @@ def start_recording(domain, mac_address):
     :mac_address: 设备MAC地址
     :return:
     """
-    url = "http://" + domain + "/control/v1/video_start"
+    url = "https://" + domain + "/control/v1/video_start"
     # url = "http://" + "10.0.100.79:8001" + "/control/v1/video_start"
     data = {"mac_address": mac_address}
     try:
@@ -27,7 +27,7 @@ def scan_video_image(domain, dir_name, second):
     :mac_address: 设备MAC地址
     :return:
     """
-    url = "http://" + domain + "/control/v1/intercept_image"
+    url = "https://" + domain + "/control/v1/intercept_image"
     data = {"dir_name": dir_name, "second": second}
     try:
         res = requests.post(url, data=data)
@@ -44,7 +44,7 @@ def stop_recording(domain, file_name, mac_address):
     :mac_address: 设备MAC地址
     :return:
     """
-    url = "http://" + domain + "/control/v1/video_stop"
+    url = "https://" + domain + "/control/v1/video_stop"
     # url = "http://" + "10.0.100.79:8001" + "/control/v1/video_stop"
     data = {"mac_address": mac_address, "video_file": file_name}
     res = requests.post(url, data=data)

@@ -17,12 +17,10 @@ from utils.decoration import check_token, drf_check_token
 logger = logging.getLogger("django")
 
 
-def enter(request, *args, **kwargs):
+def enter(request):
     """
     用户登录
     :param request:
-    :param args:
-    :param kwargs:
     :return:
     """
     mobile = request.POST.get('mobile')
@@ -57,12 +55,10 @@ def enter(request, *args, **kwargs):
         return JsonResponse(data={"error": "登录失败", "status": 404}, status=404)
 
 
-def logout(request, *args, **kwargs):
+def logout(request):
     """
     实现用户退出
     :param request:
-    :param args:
-    :param kwargs:
     :return:
     """
     request.session.flush()
@@ -70,13 +66,11 @@ def logout(request, *args, **kwargs):
 
 
 @check_token()
-def add_label(request, token, *args, **kwargs):
+def add_label(request, token):
     """
     添加用户标签
     :param request:
     :param token: 用户验证，唯一标识
-    :param args:
-    :param kwargs:
     :return:
     """
     label = request.POST.get('label')
@@ -99,13 +93,11 @@ def add_label(request, token, *args, **kwargs):
 
 
 @check_token()
-def del_label(request, token, *args, **kwargs):
+def del_label(request, token):
     """
     删除用户标签
     :param request:
     :param token: 用户验证，唯一标识
-    :param args:
-    :param kwargs:
     :return:
     """
     label_id = request.POST.get('label_id')
@@ -127,13 +119,11 @@ def del_label(request, token, *args, **kwargs):
 
 
 @check_token()
-def info(request, token, *args, **kwargs):
+def info(request, token):
     """
     个人中心
     :param request:
     :param token: 用户验证，唯一标识
-    :param args:
-    :param kwargs:
     :return:
     """
     try:
@@ -147,23 +137,21 @@ def info(request, token, *args, **kwargs):
             label_dict["id"] = label_obj.id
             label_dict["label"] = label_obj.label
             label_list.append(label_dict)
-        id = user.id
+        user_id = user.id
         mobile = user.mobile
         user_name = user.username
         role = user.role
-        data = { "id": id, "mobile": mobile, "user_name": user_name, "role": role, "label": label_list}
+        data = {"id": user_id, "mobile": mobile, "user_name": user_name, "role": role, "label": label_list}
         return JsonResponse(data={"data": data, "status": 200})
     except Exception as e:
         logger.error(e)
         return JsonResponse(data={"error": "获取数据失败", "status": 404}, status=404)
 
 
-def change_password(request, *args, **kwargs):
+def change_password(request):
     """
     修改密码
     :param request:
-    :param args:
-    :param kwargs:
     :return:
     """
     old_password = request.POST.get('old_password')
@@ -192,12 +180,10 @@ def change_password(request, *args, **kwargs):
         return JsonResponse(data={"error": "修改密码失败", "status": 400}, status=400)
 
 
-def forget_password(request, *args, **kwargs):
+def forget_password(request):
     """
     忘记密码
     :param request:
-    :param args:
-    :param kwargs:
     :return:
     """
     mobile = request.POST.get('mobile')
@@ -235,12 +221,10 @@ def forget_password(request, *args, **kwargs):
         return JsonResponse(data={"error": "修改密码失败", "status": 400}, status=400)
 
 
-def register(request, *args, **kwargs):
+def register(request):
     """
     实现用户注册
     :param request:
-    :param args:
-    :param kwargs:
     :return:
     """
     username = request.POST.get('username')
@@ -283,12 +267,10 @@ def register(request, *args, **kwargs):
         return JsonResponse(data={"error": "注册失败", "status": 400}, status=400)
 
 
-def sms_codes(request, *args, **kwargs):
+def sms_codes(request):
     """
     发送短信验证码
     :param request:
-    :param args:
-    :param kwargs:
     :return:
     """
     mobile = request.GET.get('mobile')
@@ -317,13 +299,11 @@ def sms_codes(request, *args, **kwargs):
 
 
 @check_token()
-def rename(request, token, *args, **kwargs):
+def rename(request, token):
     """
     修改用户名
     :param request:
     :param token: 用户验证，唯一标识
-    :param args:
-    :param kwargs:
     :return:
     """
     user_name = request.POST.get('user_name')
