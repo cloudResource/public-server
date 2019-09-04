@@ -23,7 +23,7 @@ urlpatterns = [
     url(r'^v1/(?P<uuid>[\w-]+)/video_share$', views.video_share),  # 查询分享的视频信息，无token验证
     url(r'^v1/comment$', views.CommentListCreateView.as_view()),  # POST: 给某个视频添加一条评论 GET: 获取某个视频所有评论
     url(r'^v1/comment/(?P<uuid>[\w-]+)/$', views.CommentDeleteView.as_view()),  # DELETE: 删除某条评论
-    url(r'^v1/attention_videos$', views.attention_videos),  # 获取关注教师的视频
+    url(r'^v1/attention_videos$', views.attention_videos),  # 获取关注教师的视频(所有教师的视频)
     url(r'^v1/change/video_name$', views.change_video_name),  # 更改视频名称
     url(r'^v1/own_videos$', views.own_videos),  # 教师获取自己的视频
     url(r'^v1/moment$', views.MomentCreateView.as_view()),  # POST: 教师设置精彩时刻

@@ -322,12 +322,11 @@ def rename(request, token):
 
 
 @check_token()
-def get_teacher_data(request, token, *args, **kwargs):
+def get_teacher_data(request, token, **kwargs):
     """
     获取教师信息
     :param request:
     :param token: 用户验证，唯一标识
-    :param args:
     :param kwargs:
     :return:
     """

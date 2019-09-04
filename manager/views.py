@@ -6,7 +6,7 @@ from django.http import JsonResponse, HttpResponse
 import xlrd
 from django.utils.http import urlquote
 
-from manager.models import Teacher, Class, Project, Equipment
+from manager.models import Teacher, Class, Equipment
 from user.models import User
 import logging
 # Create your views here.
@@ -367,7 +367,7 @@ def available_classrooms(request):
 
 
 @check_login()
-def attach_classroom(request, *args, **kwargs):
+def attach_classroom(request, **kwargs):
     """
     设备绑定教室
     :param request:
@@ -404,7 +404,7 @@ def attach_classroom(request, *args, **kwargs):
 
 
 @check_login()
-def detach_classroom(request, *args, **kwargs):
+def detach_classroom(request, **kwargs):
     """
     设备解绑教室
     :param request:
@@ -429,30 +429,6 @@ def detach_classroom(request, *args, **kwargs):
     except Exception as e:
         logger.error(e)
         return JsonResponse(data={"error": "解绑失败", "status": 400}, status=400)
-
-
-def get_projects(request):
-    """
-    获取项目相关信息
-
-    """
-    try:
-        project_set = Project.objects.all()
-        project_list = []
-        for project_obj in project_set:
-            project_id = project_obj.id
-            project_name = project_obj.name
-            app_id = project_obj.app_id
-            app_secret = project_obj.app_secret
-            project_dict = {"project_id": project_id,
-                            "project_name": project_name,
-                            "app_id": app_id,
-                            "app_secret": app_secret}
-            project_list.append(project_dict)
-        return JsonResponse(data={"data": project_list, "status": 200})
-    except Exception as e:
-        logger.error(e)
-        return JsonResponse(data={"error": "获取数据失败", "status": 400}, status=400)
 
 
 def project_data(request):

@@ -5,14 +5,6 @@ from user.models import User
 
 # Create your models here.
 
-class Project(models.Model):
-    name = models.CharField(max_length=100, null=True, help_text="project_name")
-    app_id = models.CharField(max_length=100, null=True, help_text="app_id")
-    app_secret = models.CharField(max_length=100, null=True, help_text="app_secret")
-
-    class Meta:
-        db_table = "tb_project"
-
 
 class School(models.Model):
     school_name = models.CharField(max_length=64, null=True, help_text="学校名称")

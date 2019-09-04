@@ -3,7 +3,9 @@ from rest_framework.generics import ListCreateAPIView, DestroyAPIView, CreateAPI
 
 # Create your views here.
 from manager.models import *
+from public_server.settings import PAGINATOR
 from user.models import User
+from utils.DataPaginator import data_paginator
 from utils.decoration import check_token, drf_check_token
 from video.control import *
 import logging
@@ -21,17 +23,20 @@ def video_list(request, token):
     :return:
     """
     data = {"data": []}
+    page = request.GET.get("page", PAGINATOR.get("current_page"))
+    limit = request.GET.get("limit", PAGINATOR.get("limit"))
     try:
         user = User.objects.filter(openid=token).first()
         if not user:
             return JsonResponse(data={"error": "用户未注册", "status": 401})
-        videos_obj = Video.objects.filter(is_delete=False, is_issue=True, status=True).order_by("-id")
-        for video in videos_obj:
+        videos_set = Video.objects.filter(is_delete=False, is_issue=True, status=True).order_by("-id")
+        new_videos_set = data_paginator(videos_set, page, limit)
+        for video in new_videos_set:
             video_dict = dict()
             note_list = list()
             moment_list = list()
             label_list = list()
-            notes_set = video.note_set.order_by('note_time').all()
+            notes_set = video.note_set.filter(is_hide=False).order_by('note_time').all()
             moment_set = video.moment_set.all()
             label_set = video.teacher_id.user_id.label_set.all()
             for label_obj in label_set:
@@ -347,22 +352,25 @@ def change_video_name(request, token):
 @check_token()
 def attention_videos(request, token):
     """
-    获取关注教师的视频
+    获取关注教师的视频(所有教师的视频)
     :param request:
     :param token: 用户验证，唯一标识
     :return:
     """
     data = {"data": []}
+    page = request.GET.get("page", PAGINATOR.get("current_page"))
+    limit = request.GET.get("limit", PAGINATOR.get("limit"))
     try:
         user_obj = User.objects.filter(openid=token).first()
         if not user_obj:
             return JsonResponse(data={"error": "用户未注册", "status": 401})
         teacher_set = RelationUser.objects.filter(user_id=user_obj)
-        for teacher_obj in teacher_set:
+        new_teacher_set = data_paginator(teacher_set, page, limit)
+        for teacher_obj in new_teacher_set:
             video_set = Video.objects.filter(teacher_id=teacher_obj.teacher_id,
                                              is_delete=False,
                                              is_issue=True,
-                                             status=True)
+                                             status=True).order_by("-id")
             for video_obj in video_set:
                 video_dict = dict()
                 note_list = list()
@@ -419,6 +427,8 @@ def own_videos(request, token):
     :return:
     """
     data = {"data": []}
+    page = request.GET.get("page", PAGINATOR.get("current_page"))
+    limit = request.GET.get("limit", PAGINATOR.get("limit"))
     try:
         user_obj = User.objects.filter(openid=token).first()
         if not user_obj:
@@ -426,7 +436,8 @@ def own_videos(request, token):
         if user_obj.role != "teacher":
             return JsonResponse(data={"error": "角色不匹配，无权查看", "status": 400})
         video_set = Video.objects.filter(teacher_id=user_obj.teacher, is_delete=False, status=True).order_by("-id")
-        for video_obj in video_set:
+        new_video_set = data_paginator(video_set, page, limit)
+        for video_obj in new_video_set:
             video_dict = dict()
             note_list = list()
             moment_list = list()
@@ -743,12 +754,11 @@ def is_hide_blackboard(request, token):
 
 
 @check_token()
-def video_details(request, token, *args, **kwargs):
+def video_details(request, token, **kwargs):
     """
     查询视频详情
     :param request:
     :param token: 用户验证，唯一标识
-    :param args:
     :param kwargs:
     :return:
     """
@@ -819,11 +829,10 @@ def video_details(request, token, *args, **kwargs):
         return JsonResponse(data={"error": "获取数据失败", "status": 400})
 
 
-def video_share(request, *args, **kwargs):
+def video_share(request, **kwargs):
     """
     查询分享的视频信息，无token验证
     :param request:
-    :param args:
     :param kwargs:
     :return:
     """
@@ -839,7 +848,7 @@ def video_share(request, *args, **kwargs):
         note_list = list()
         moment_list = list()
         label_list = list()
-        notes_set = video_obj.note_set.order_by('note_time').all()
+        notes_set = video_obj.note_set.filter(is_hide=False).order_by('note_time').all()
         moment_set = video_obj.moment_set.all()
         label_set = video_obj.teacher_id.user_id.label_set.all()
         for label_obj in label_set:
@@ -886,7 +895,7 @@ def video_share(request, *args, **kwargs):
 
 
 @check_token()
-def teacher_video_list(request, token, *args, **kwargs):
+def teacher_video_list(request, token, **kwargs):
     """
     查看某个教师的所有视频
     :param request:
@@ -895,6 +904,8 @@ def teacher_video_list(request, token, *args, **kwargs):
     """
     data = {"data": []}
     teacher_id = kwargs.get("uuid")
+    page = request.GET.get("page", PAGINATOR.get("current_page"))
+    limit = request.GET.get("limit", PAGINATOR.get("limit"))
     try:
         user = User.objects.filter(openid=token).first()
         if not user:
@@ -902,16 +913,17 @@ def teacher_video_list(request, token, *args, **kwargs):
         teacher_object = Teacher.objects.filter(id=teacher_id).first()
         if not teacher_object:
             return JsonResponse(data={"error": "该教师不存在", "status": 400})
-        videos_obj = Video.objects.filter(teacher_id=teacher_object,
+        videos_set = Video.objects.filter(teacher_id=teacher_object,
                                           is_delete=False,
                                           status=True,
                                           is_issue=True).order_by("-id")
-        for video in videos_obj:
+        new_videos_set = data_paginator(videos_set, page, limit)
+        for video in new_videos_set:
             video_dict = dict()
             note_list = list()
             moment_list = list()
             label_list = list()
-            notes_set = video.note_set.order_by('note_time').all()
+            notes_set = video.note_set.filter(is_hide=False).order_by('note_time').all()
             moment_set = video.moment_set.all()
             label_set = video.teacher_id.user_id.label_set.all()
             for label_obj in label_set:

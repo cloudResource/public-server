@@ -278,3 +278,11 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/1.11/howto/static-files/
 
 STATIC_URL = '/static/'
+
+# 分页限制
+PAGINATOR = {
+    'limit': 10,
+    'current_page': 1,
+    'order': 'descend',
+    'field': 'create_time'
+}
