@@ -22,66 +22,136 @@ def video_list(request, token):
     :param token: 用户验证，唯一标识
     :return:
     """
-    data = {"data": []}
+    data = {"teacher_data": [], "video_data": []}
     page = request.GET.get("page", PAGINATOR.get("current_page"))
     limit = request.GET.get("limit", PAGINATOR.get("limit"))
+    query_field = request.GET.get("query_field")
     try:
-        user = User.objects.filter(openid=token).first()
-        if not user:
-            return JsonResponse(data={"error": "用户未注册", "status": 401})
-        videos_set = Video.objects.filter(is_delete=False, is_issue=True, status=True).order_by("-id")
-        new_videos_set = data_paginator(videos_set, page, limit)
-        for video in new_videos_set:
-            video_dict = dict()
-            note_list = list()
-            moment_list = list()
-            label_list = list()
-            notes_set = video.note_set.filter(is_hide=False).order_by('note_time').all()
-            moment_set = video.moment_set.all()
-            label_set = video.teacher_id.user_id.label_set.all()
-            for label_obj in label_set:
-                label_list.append({"label": label_obj.label})
-            for note_obj in notes_set:
-                note_list.append({"note_id": note_obj.id,
-                                  "note_time": note_obj.note_time,
-                                  "is_hide": note_obj.is_hide,
-                                  "note_path": note_obj.note_path,
-                                  "note_thumb_path": note_obj.note_thumb_path})
-            for moment_obj in moment_set:
-                moment_list.append(
-                    {"moment_id": moment_obj.id,
-                     "moment_time": moment_obj.moment_time,
-                     "start_time": moment_obj.start_time,
-                     "stop_time": moment_obj.stop_time,
-                     "moment_path": moment_obj.moment_path})
-            teacher_obj = video.teacher_id
-            teacher_id = teacher_obj.id
-            teacher_name = teacher_obj.user_id.username
-            teacher_school = teacher_obj.school_id.school_name
-            relation_user_obj = RelationUser.objects.filter(teacher_id=teacher_obj, user_id=user).first()
-            if relation_user_obj:
-                is_attention = True
-            else:
-                is_attention = False
-            teacher_dict = {"teacher_id": teacher_id,
-                            "teacher_name": teacher_name,
-                            "teacher_school": teacher_school,
-                            "is_attention": is_attention}
-            video_dict["video_id"] = video.id
-            video_dict["video_name"] = video.video_name
-            video_dict["is_issue"] = video.is_issue
-            video_dict["file_path"] = video.file_path
-            video_dict["video_date"] = video.video_date
-            video_dict["teacher_data"] = teacher_dict
-            video_dict["image_path"] = video.image_path
-            video_dict["video_status"] = video.status
-            video_dict["domain"] = video.teacher_id.school_id.domain
-            video_dict["video_notes"] = note_list
-            video_dict["video_moments"] = moment_list
-            video_dict["label_list"] = label_list
-            data["data"].append(video_dict)
-        data["status"] = 200
-        return JsonResponse(data=data)
+        if query_field:
+            user = User.objects.filter(openid=token).first()
+            if not user:
+                return JsonResponse(data={"error": "用户未注册", "status": 401})
+            user_set = User.objects.filter(username__icontains=query_field).filter(role="teacher").order_by("-id")
+            new_user_set = data_paginator(user_set, 1, 5)
+            for user_obj in new_user_set:
+                teacher_dict = dict()
+                teacher_id = user_obj.teacher.id
+                user_name = user_obj.username
+                teacher_dict["teacher_id"] = teacher_id
+                teacher_dict["teacher_name"] = user_name
+                data["teacher_data"].append(teacher_dict)
+            video_set = Video.objects.filter(video_name__icontains=query_field).filter(is_delete=False,
+                                                                                       is_issue=True,
+                                                                                       status=True).order_by("-id")
+            new_videos_set = data_paginator(video_set, page, limit)
+            for video in new_videos_set:
+                video_dict = dict()
+                note_list = list()
+                moment_list = list()
+                label_list = list()
+                notes_set = video.note_set.filter(is_hide=False).order_by('note_time').all()
+                moment_set = video.moment_set.all()
+                label_set = video.teacher_id.user_id.label_set.all()
+                for label_obj in label_set:
+                    label_list.append({"label": label_obj.label})
+                for note_obj in notes_set:
+                    note_list.append({"note_id": note_obj.id,
+                                      "note_time": note_obj.note_time,
+                                      "is_hide": note_obj.is_hide,
+                                      "note_path": note_obj.note_path,
+                                      "note_thumb_path": note_obj.note_thumb_path})
+                for moment_obj in moment_set:
+                    moment_list.append(
+                        {"moment_id": moment_obj.id,
+                         "moment_time": moment_obj.moment_time,
+                         "start_time": moment_obj.start_time,
+                         "stop_time": moment_obj.stop_time,
+                         "moment_path": moment_obj.moment_path})
+                teacher_obj = video.teacher_id
+                teacher_id = teacher_obj.id
+                teacher_name = teacher_obj.user_id.username
+                teacher_school = teacher_obj.school_id.school_name
+                relation_user_obj = RelationUser.objects.filter(teacher_id=teacher_obj, user_id=user).first()
+                if relation_user_obj:
+                    is_attention = True
+                else:
+                    is_attention = False
+                teacher_dict = {"teacher_id": teacher_id,
+                                "teacher_name": teacher_name,
+                                "teacher_school": teacher_school,
+                                "is_attention": is_attention}
+                video_dict["video_id"] = video.id
+                video_dict["video_name"] = video.video_name
+                video_dict["is_issue"] = video.is_issue
+                video_dict["file_path"] = video.file_path
+                video_dict["video_date"] = video.video_date
+                video_dict["teacher_data"] = teacher_dict
+                video_dict["image_path"] = video.image_path
+                video_dict["video_status"] = video.status
+                video_dict["domain"] = video.teacher_id.school_id.domain
+                video_dict["video_notes"] = note_list
+                video_dict["video_moments"] = moment_list
+                video_dict["label_list"] = label_list
+                data["video_data"].append(video_dict)
+            data["status"] = 200
+            return JsonResponse(data=data)
+        else:
+            user = User.objects.filter(openid=token).first()
+            if not user:
+                return JsonResponse(data={"error": "用户未注册", "status": 401})
+            videos_set = Video.objects.filter(is_delete=False, is_issue=True, status=True).order_by("-id")
+            new_videos_set = data_paginator(videos_set, page, limit)
+            for video in new_videos_set:
+                video_dict = dict()
+                note_list = list()
+                moment_list = list()
+                label_list = list()
+                notes_set = video.note_set.filter(is_hide=False).order_by('note_time').all()
+                moment_set = video.moment_set.all()
+                label_set = video.teacher_id.user_id.label_set.all()
+                for label_obj in label_set:
+                    label_list.append({"label": label_obj.label})
+                for note_obj in notes_set:
+                    note_list.append({"note_id": note_obj.id,
+                                      "note_time": note_obj.note_time,
+                                      "is_hide": note_obj.is_hide,
+                                      "note_path": note_obj.note_path,
+                                      "note_thumb_path": note_obj.note_thumb_path})
+                for moment_obj in moment_set:
+                    moment_list.append(
+                        {"moment_id": moment_obj.id,
+                         "moment_time": moment_obj.moment_time,
+                         "start_time": moment_obj.start_time,
+                         "stop_time": moment_obj.stop_time,
+                         "moment_path": moment_obj.moment_path})
+                teacher_obj = video.teacher_id
+                teacher_id = teacher_obj.id
+                teacher_name = teacher_obj.user_id.username
+                teacher_school = teacher_obj.school_id.school_name
+                relation_user_obj = RelationUser.objects.filter(teacher_id=teacher_obj, user_id=user).first()
+                if relation_user_obj:
+                    is_attention = True
+                else:
+                    is_attention = False
+                teacher_dict = {"teacher_id": teacher_id,
+                                "teacher_name": teacher_name,
+                                "teacher_school": teacher_school,
+                                "is_attention": is_attention}
+                video_dict["video_id"] = video.id
+                video_dict["video_name"] = video.video_name
+                video_dict["is_issue"] = video.is_issue
+                video_dict["file_path"] = video.file_path
+                video_dict["video_date"] = video.video_date
+                video_dict["teacher_data"] = teacher_dict
+                video_dict["image_path"] = video.image_path
+                video_dict["video_status"] = video.status
+                video_dict["domain"] = video.teacher_id.school_id.domain
+                video_dict["video_notes"] = note_list
+                video_dict["video_moments"] = moment_list
+                video_dict["label_list"] = label_list
+                data["video_data"].append(video_dict)
+            data["status"] = 200
+            return JsonResponse(data=data)
     except Exception as e:
         logger.error(e)
         return JsonResponse(data={"error": "获取数据失败", "status": 400})
@@ -255,7 +325,7 @@ class MomentCreateView(CreateAPIView):
             user_obj = User.objects.filter(openid=token).first()
             if not user_obj:
                 return JsonResponse(data={"error": "用户未注册", "status": 401})
-            if user_obj.role != "teacher":
+            if user_obj.role == "user":
                 return JsonResponse(data={"error": "无权操作", "status": 400})
             video_obj = Video.objects.filter(id=video_id).first()
             if not video_obj:
@@ -433,7 +503,7 @@ def own_videos(request, token):
         user_obj = User.objects.filter(openid=token).first()
         if not user_obj:
             return JsonResponse(data={"error": "用户未注册", "status": 401})
-        if user_obj.role != "teacher":
+        if user_obj.role == "user":
             return JsonResponse(data={"error": "角色不匹配，无权查看", "status": 400})
         video_set = Video.objects.filter(teacher_id=user_obj.teacher, is_delete=False, status=True).order_by("-id")
         new_video_set = data_paginator(video_set, page, limit)
@@ -508,7 +578,7 @@ def video_start(request, token):
         user_obj = User.objects.filter(openid=token).first()
         if not user_obj:
             return JsonResponse(data={"error": "用户未注册", "status": 401})
-        if user_obj.role != "teacher":
+        if user_obj.role == "user":
             return JsonResponse(data={"error": "非教师用户无权录制", "status": 400})
         class_obj = Class.objects.filter(id=int(class_id)).first()
         if not class_obj:
@@ -565,7 +635,7 @@ def video_stop(request, token):
         user_obj = User.objects.filter(openid=token).first()
         if not user_obj:
             return JsonResponse(data={"error": "用户未注册", "status": 401})
-        if user_obj.role != "teacher":
+        if user_obj.role == "user":
             return JsonResponse(data={"error": "无权操作", "status": 400})
         class_obj = Class.objects.filter(id=int(class_id)).first()
         if not class_obj:
@@ -625,7 +695,7 @@ def video_issue(request, token):
         user_obj = User.objects.filter(openid=token).first()
         if not user_obj:
             return JsonResponse(data={"error": "用户未注册", "status": 401})
-        if user_obj.role != "teacher":
+        if user_obj.role == "user":
             return JsonResponse(data={"error": "无权操作", "status": 400})
         video_obj = Video.objects.filter(id=video_id).first()
         if not video_obj:
@@ -655,7 +725,7 @@ def video_delete(request, token):
         user_obj = User.objects.filter(openid=token).first()
         if not user_obj:
             return JsonResponse(data={"error": "用户未注册", "status": 401})
-        if user_obj.role != "teacher":
+        if user_obj.role == "user":
             return JsonResponse(data={"error": "无权操作", "status": 400})
         video_obj = Video.objects.filter(id=video_id).first()
         if not video_obj:
@@ -673,7 +743,7 @@ def video_delete(request, token):
 @check_token()
 def get_classes(request, token):
     """
-    教师录制获取所有教室
+    小程序获取所有教室
     :param request:
     :param token: 用户验证，唯一标识
     :return:
@@ -683,7 +753,7 @@ def get_classes(request, token):
         user_obj = User.objects.filter(openid=token).first()
         if not user_obj:
             return JsonResponse(data={"error": "用户未注册", "status": 401})
-        if user_obj.role != "teacher":
+        if user_obj.role == "user":
             return JsonResponse(data={"error": "无权查看", "status": 400})
         school_obj = user_obj.teacher.school_id
         grade_set = Class.objects.values_list("grade_name", flat=True).distinct()
@@ -738,7 +808,7 @@ def is_hide_blackboard(request, token):
         user_obj = User.objects.filter(openid=token).first()
         if not user_obj:
             return JsonResponse(data={"error": "用户未注册", "status": 401})
-        if user_obj.role != "teacher":
+        if user_obj.role == "user":
             return JsonResponse(data={"error": "无权操作", "status": 400})
         note_obj = Note.objects.filter(id=note_id).first()
         if not note_obj:

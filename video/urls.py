@@ -32,6 +32,6 @@ urlpatterns = [
     url(r'^v1/video_stop$', views.video_stop),  # 结束录制视频
     url(r'^v1/video_issue$', views.video_issue),  # 发布视频
     url(r'^v1/video_delete$', views.video_delete),  # 发布视频
-    url(r'^v1/get_classes$', views.get_classes),  # 录制查询所有教室
+    url(r'^v1/get_classes$', views.get_classes),  # 小程序获取所有教室
     url(r'^v1/blackboard/is_hide$', views.is_hide_blackboard),  # 教师设置是否隐藏版书
 ]
