@@ -345,6 +345,7 @@ def get_teacher_data(request, token, **kwargs):
         label_list = list()
         for label_obj in teacher_obj.user_id.label_set.all():
             label_list.append({"label": label_obj.label})
+        data["user_id"] = teacher_obj.user_id.id
         data["teacher_id"] = teacher_obj.id
         data["name"] = teacher_obj.user_id.username
         data["label"] = label_list
@@ -379,9 +380,20 @@ class AttentionTeachers(ListCreateAPIView):
             relation_user_set = RelationUser.objects.filter(user_id=user_obj)
             teacher_list = []
             for relation_user_obj in relation_user_set:
+                label_list = []
+                user_id = relation_user_obj.teacher_id.user_id.id
                 teacher_id = relation_user_obj.teacher_id.id
                 user_name = relation_user_obj.teacher_id.user_id.username
-                teacher_dict = {"teacher_id": teacher_id, "user_name": user_name}
+                teacher_school = relation_user_obj.teacher_id.school_id.school_name
+                label_set = relation_user_obj.teacher_id.user_id.label_set.all()
+                for label_obj in label_set:
+                    label_list.append({"label": label_obj.label})
+                teacher_dict = {"user_id": user_id,
+                                "teacher_id": teacher_id,
+                                "user_name": user_name,
+                                "teacher_school": teacher_school,
+                                "label": label_list,
+                                "is_attention": True}
                 teacher_list.append(teacher_dict)
             return JsonResponse(data={"data": teacher_list, "status": 200})
         except Exception as e:

@@ -101,6 +101,62 @@ def del_teacher(request):
 
 
 @check_login()
+def auth_admin_teacher(request):
+    """
+    管理员授权管理教师
+    :param request:
+    :return:
+    """
+    teacher_id = request.POST.get('teacher_id')
+    admin_user_id = request.session.get('user_id')
+    if not teacher_id:
+        return JsonResponse(data={"error": "缺少必传参数", "status": 400})
+    try:
+        admin_school_obj = User.objects.filter(id=admin_user_id).first().school
+        teacher_school_obj = Teacher.objects.filter(id=teacher_id).first().school_id
+        if admin_school_obj != teacher_school_obj:
+            return JsonResponse(data={"error": "无此权限", "status": 400})
+        teacher_obj = Teacher.objects.filter(id=teacher_id).first()
+        if not teacher_obj:
+            return JsonResponse(data={"error": "此教师不存在或已删除", "status": 400})
+        user_obj = teacher_obj.user_id
+        user_obj.role = "admin_teacher"
+        user_obj.save()
+        return JsonResponse(data={"message": "授权成功", "status": 200})
+    except Exception as e:
+        logger.error(e)
+        return JsonResponse(data={"error": "授权失败", "status": 400}, status=400)
+
+
+@check_login()
+def cancel_admin_teacher(request):
+    """
+    管理员取消管理教师
+    :param request:
+    :return:
+    """
+    teacher_id = request.POST.get('teacher_id')
+    admin_user_id = request.session.get('user_id')
+    if not teacher_id:
+        return JsonResponse(data={"error": "缺少必传参数", "status": 400})
+    try:
+        admin_school_obj = User.objects.filter(id=admin_user_id).first().school
+        teacher_school_obj = Teacher.objects.filter(id=teacher_id).first().school_id
+        if admin_school_obj != teacher_school_obj:
+            return JsonResponse(data={"error": "无此权限", "status": 400})
+        teacher_obj = Teacher.objects.filter(id=teacher_id).first()
+        if not teacher_obj:
+            return JsonResponse(data={"error": "此教师不存在或已删除", "status": 400})
+        user_obj = teacher_obj.user_id
+        user_obj.role = "teacher"
+        user_obj.save()
+        return JsonResponse(data={"message": "取消授权成功", "status": 200})
+    except Exception as e:
+        logger.error(e)
+        return JsonResponse(data={"error": "取消授权失败", "status": 400}, status=400)
+
+
+@check_login()
 def del_class(request):
     """
     删除班级

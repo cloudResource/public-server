@@ -31,12 +31,14 @@ def video_list(request, token):
             user = User.objects.filter(openid=token).first()
             if not user:
                 return JsonResponse(data={"error": "用户未注册", "status": 401})
-            user_set = User.objects.filter(username__icontains=query_field).filter(role="teacher").order_by("-id")
+            user_set = User.objects.filter(username__icontains=query_field).exclude(role="admin").exclude(role="user").order_by("-id")
             new_user_set = data_paginator(user_set, 1, 5)
             for user_obj in new_user_set:
                 teacher_dict = dict()
+                user_id = user_obj.id
                 teacher_id = user_obj.teacher.id
                 user_name = user_obj.username
+                teacher_dict["user_id"] = user_id
                 teacher_dict["teacher_id"] = teacher_id
                 teacher_dict["teacher_name"] = user_name
                 data["teacher_data"].append(teacher_dict)
@@ -68,6 +70,7 @@ def video_list(request, token):
                          "stop_time": moment_obj.stop_time,
                          "moment_path": moment_obj.moment_path})
                 teacher_obj = video.teacher_id
+                user_id = teacher_obj.user_id.id
                 teacher_id = teacher_obj.id
                 teacher_name = teacher_obj.user_id.username
                 teacher_school = teacher_obj.school_id.school_name
@@ -76,7 +79,8 @@ def video_list(request, token):
                     is_attention = True
                 else:
                     is_attention = False
-                teacher_dict = {"teacher_id": teacher_id,
+                teacher_dict = {"user_id": user_id,
+                                "teacher_id": teacher_id,
                                 "teacher_name": teacher_name,
                                 "teacher_school": teacher_school,
                                 "is_attention": is_attention}
@@ -125,6 +129,7 @@ def video_list(request, token):
                          "stop_time": moment_obj.stop_time,
                          "moment_path": moment_obj.moment_path})
                 teacher_obj = video.teacher_id
+                user_id = teacher_obj.user_id.id
                 teacher_id = teacher_obj.id
                 teacher_name = teacher_obj.user_id.username
                 teacher_school = teacher_obj.school_id.school_name
@@ -133,7 +138,8 @@ def video_list(request, token):
                     is_attention = True
                 else:
                     is_attention = False
-                teacher_dict = {"teacher_id": teacher_id,
+                teacher_dict = {"user_id": user_id,
+                                "teacher_id": teacher_id,
                                 "teacher_name": teacher_name,
                                 "teacher_school": teacher_school,
                                 "is_attention": is_attention}
@@ -463,10 +469,12 @@ def attention_videos(request, token):
                          "moment_time": moment_obj.moment_time,
                          "moment_path": moment_obj.moment_path})
                 teacher_obj = video_obj.teacher_id
+                user_id = teacher_obj.user_id.id
                 teacher_id = teacher_obj.id
                 teacher_name = teacher_obj.user_id.username
                 teacher_school = teacher_obj.school_id.school_name
-                teacher_dict = {"teacher_id": teacher_id,
+                teacher_dict = {"user_id": user_id,
+                                "teacher_id": teacher_id,
                                 "teacher_name": teacher_name,
                                 "teacher_school": teacher_school}
                 video_dict["video_id"] = video_obj.id
@@ -531,6 +539,7 @@ def own_videos(request, token):
                      "stop_time": moment_obj.stop_time,
                      "moment_path": moment_obj.moment_path})
             teacher_obj = video_obj.teacher_id
+            user_id = teacher_obj.user_id.id
             teacher_id = teacher_obj.id
             teacher_name = teacher_obj.user_id.username
             teacher_school = teacher_obj.school_id.school_name
@@ -539,7 +548,8 @@ def own_videos(request, token):
                 is_attention = True
             else:
                 is_attention = False
-            teacher_dict = {"teacher_id": teacher_id,
+            teacher_dict = {"user_id": user_id,
+                            "teacher_id": teacher_id,
                             "teacher_name": teacher_name,
                             "teacher_school": teacher_school,
                             "is_attention": is_attention}
@@ -866,6 +876,7 @@ def video_details(request, token, **kwargs):
                  "stop_time": moment_obj.stop_time,
                  "moment_path": moment_obj.moment_path})
         teacher_obj = video_obj.teacher_id
+        user_id = teacher_obj.user_id.id
         teacher_id = teacher_obj.id
         teacher_name = teacher_obj.user_id.username
         teacher_school = teacher_obj.school_id.school_name
@@ -874,7 +885,8 @@ def video_details(request, token, **kwargs):
             is_attention = True
         else:
             is_attention = False
-        teacher_dict = {"teacher_id": teacher_id,
+        teacher_dict = {"user_id": user_id,
+                        "teacher_id": teacher_id,
                         "teacher_name": teacher_name,
                         "teacher_school": teacher_school,
                         "is_attention": is_attention}
@@ -937,10 +949,12 @@ def video_share(request, **kwargs):
                  "stop_time": moment_obj.stop_time,
                  "moment_path": moment_obj.moment_path})
         teacher_obj = video_obj.teacher_id
+        user_id = teacher_obj.user_id.id
         teacher_id = teacher_obj.id
         teacher_name = teacher_obj.user_id.username
         teacher_school = teacher_obj.school_id.school_name
-        teacher_dict = {"teacher_id": teacher_id,
+        teacher_dict = {"user_id": user_id,
+                        "teacher_id": teacher_id,
                         "teacher_name": teacher_name,
                         "teacher_school": teacher_school}
         video_dict["video_id"] = video_obj.id
@@ -1012,6 +1026,7 @@ def teacher_video_list(request, token, **kwargs):
                      "stop_time": moment_obj.stop_time,
                      "moment_path": moment_obj.moment_path})
             teacher_obj = video.teacher_id
+            user_id = teacher_obj.user_id.id
             teacher_id = teacher_obj.id
             teacher_name = teacher_obj.user_id.username
             teacher_school = teacher_obj.school_id.school_name
@@ -1020,7 +1035,8 @@ def teacher_video_list(request, token, **kwargs):
                 is_attention = True
             else:
                 is_attention = False
-            teacher_dict = {"teacher_id": teacher_id,
+            teacher_dict = {"user_id": user_id,
+                            "teacher_id": teacher_id,
                             "teacher_name": teacher_name,
                             "teacher_school": teacher_school,
                             "is_attention": is_attention}

@@ -22,6 +22,8 @@ urlpatterns = [
     url(r'^v1/add_teacher/batch$', views.batch_add_teacher),  # 批量添加教师
     url(r'^v1/del_teacher$', views.del_teacher),  # 删除教师
     url(r'^v1/del_class$', views.del_class),  # 删除教室
+    url(r'^v1/admin_teacher/auth', views.auth_admin_teacher),  # 管理员授权管理教师
+    url(r'^v1/admin_teacher/cancel', views.cancel_admin_teacher),  # 管理员取消管理教师
     url(r'^v1/get_classes$', views.get_classes),  # 查询所有班级
     url(r'^v1/add_class$', views.add_class),  # 添加班级
     url(r'^v1/add_class/batch$', views.batch_add_class),  # 批量添加班级
