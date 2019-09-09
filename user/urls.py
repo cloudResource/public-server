@@ -27,6 +27,7 @@ urlpatterns = [
     url(r'^v1/add_label$', views.add_label),  # 添加用户标签
     url(r'^v1/del_label$', views.del_label),  # 删除用户标签
     url(r'^v1/rename$', views.rename),  # 修改用户名
+    url(r'^v1/get_teacher$', views.get_teacher),  # 查看全部教师
     url(r'^v1/get_teacher/(?P<uuid>[\w-]+)/data$', views.get_teacher_data),  # 获取教师信息
     url(r'^v1/attention_teacher$', views.AttentionTeachers.as_view()), # POST: 关注教师增删改查 GET: 查看关注的教师
     url(r'^v1/attention_teacher/(?P<uuid>[\w-]+)/$', views.UnfollowTeachers.as_view()), # DELETE: 取消关注教师

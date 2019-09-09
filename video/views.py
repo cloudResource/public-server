@@ -27,10 +27,10 @@ def video_list(request, token):
     limit = request.GET.get("limit", PAGINATOR.get("limit"))
     query_field = request.GET.get("query_field")
     try:
+        user = User.objects.filter(openid=token).first()
+        if not user:
+            return JsonResponse(data={"error": "用户未注册", "status": 401})
         if query_field:
-            user = User.objects.filter(openid=token).first()
-            if not user:
-                return JsonResponse(data={"error": "用户未注册", "status": 401})
             user_set = User.objects.filter(username__icontains=query_field).exclude(role="admin").exclude(role="user").order_by("-id")
             new_user_set = data_paginator(user_set, 1, 5)
             for user_obj in new_user_set:

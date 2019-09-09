@@ -7,9 +7,11 @@ import logging
 from django_redis import get_redis_connection
 
 from manager.models import Teacher, RelationUser
+from public_server.settings import PAGINATOR
 from user import constants
 from celery_tasks.sms.tasks import send_sms_code
 from user.models import User, Label
+from utils.DataPaginator import data_paginator
 from utils.decoration import check_token, drf_check_token
 
 # Create your views here.
@@ -320,6 +322,53 @@ def rename(request, token):
         logger.error(e)
         return JsonResponse(data={"error": "修改用户名失败", "status": 400}, status=400)
 
+
+@check_token()
+def get_teacher(request, token):
+    """
+    获取所有教师
+    :param request:
+    :param token:
+    :return:
+    """
+    data = {"data": []}
+    page = request.GET.get("page", PAGINATOR.get("current_page"))
+    limit = request.GET.get("limit", PAGINATOR.get("limit"))
+    query_field = request.GET.get("query_field")
+    try:
+        user = User.objects.filter(openid=token).first()
+        if not user:
+            return JsonResponse(data={"error": "用户未注册", "status": 401})
+        if query_field:
+            user_set = User.objects.filter(username__icontains=query_field).exclude(role="admin").exclude(role="user").order_by("-id")
+            new_user_set = data_paginator(user_set, page, limit)
+            for user_obj in new_user_set:
+                teacher_dict = dict()
+                user_id = user_obj.id
+                teacher_id = user_obj.teacher.id
+                user_name = user_obj.username
+                teacher_dict["user_id"] = user_id
+                teacher_dict["teacher_id"] = teacher_id
+                teacher_dict["teacher_name"] = user_name
+                data["data"].append(teacher_dict)
+            data["status"] = 200
+            return JsonResponse(data=data)
+        user_set = User.objects.exclude(role="admin").exclude(role="user").order_by("-id")
+        new_user_set = data_paginator(user_set, page, limit)
+        for user_obj in new_user_set:
+            teacher_dict = dict()
+            user_id = user_obj.id
+            teacher_id = user_obj.teacher.id
+            user_name = user_obj.username
+            teacher_dict["user_id"] = user_id
+            teacher_dict["teacher_id"] = teacher_id
+            teacher_dict["teacher_name"] = user_name
+            data["data"].append(teacher_dict)
+        data["status"] = 200
+        return JsonResponse(data=data)
+    except Exception as e:
+        logger.error(e)
+        return JsonResponse(data={"error": "获取数据失败", "status": 400})
 
 @check_token()
 def get_teacher_data(request, token, **kwargs):
