@@ -46,6 +46,8 @@ def video_list(request, token):
                                                                                        is_issue=True,
                                                                                        status=True).order_by("-id")
             new_videos_set = data_paginator(video_set, page, limit)
+            if not new_videos_set:
+                return JsonResponse(data={"error": "我是有底线的", "status": 404})
             for video in new_videos_set:
                 video_dict = dict()
                 note_list = list()
@@ -105,6 +107,8 @@ def video_list(request, token):
                 return JsonResponse(data={"error": "用户未注册", "status": 401})
             videos_set = Video.objects.filter(is_delete=False, is_issue=True, status=True).order_by("-id")
             new_videos_set = data_paginator(videos_set, page, limit)
+            if not new_videos_set:
+                return JsonResponse(data={"error": "我是有底线的", "status": 404})
             for video in new_videos_set:
                 video_dict = dict()
                 note_list = list()

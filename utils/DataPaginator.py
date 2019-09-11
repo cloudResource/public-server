@@ -19,7 +19,8 @@ def data_paginator(obj, page, limit):
         obj = paginator.page(1)
     except EmptyPage:
         # If page is out of range (e.g. 9999), deliver last page of results.
-        obj = paginator.page(paginator.num_pages)
+        # obj = paginator.page(paginator.num_pages)
+        obj = None
     return obj
 
 if __name__ == '__main__':
