@@ -29,7 +29,57 @@ def video_list(request, token):
     try:
         user = User.objects.filter(openid=token).first()
         if not user:
-            return JsonResponse(data={"error": "用户未注册", "status": 401})
+            videos_set = Video.objects.filter(is_delete=False, is_issue=True, status=True).order_by("-id")
+            new_videos_set = data_paginator(videos_set, page, limit)
+            if not new_videos_set:
+                return JsonResponse(data={"error": "我是有底线的", "status": 404})
+            for video in new_videos_set:
+                video_dict = dict()
+                note_list = list()
+                moment_list = list()
+                label_list = list()
+                notes_set = video.note_set.filter(is_hide=False).order_by('note_time').all()
+                moment_set = video.moment_set.all()
+                label_set = video.teacher_id.user_id.label_set.all()
+                for label_obj in label_set:
+                    label_list.append({"label": label_obj.label})
+                for note_obj in notes_set:
+                    note_list.append({"note_id": note_obj.id,
+                                      "note_time": note_obj.note_time,
+                                      "is_hide": note_obj.is_hide,
+                                      "note_path": note_obj.note_path,
+                                      "note_thumb_path": note_obj.note_thumb_path})
+                for moment_obj in moment_set:
+                    moment_list.append(
+                        {"moment_id": moment_obj.id,
+                         "moment_time": moment_obj.moment_time,
+                         "start_time": moment_obj.start_time,
+                         "stop_time": moment_obj.stop_time,
+                         "moment_path": moment_obj.moment_path})
+                teacher_obj = video.teacher_id
+                user_id = teacher_obj.user_id.id
+                teacher_id = teacher_obj.id
+                teacher_name = teacher_obj.user_id.username
+                teacher_school = teacher_obj.school_id.school_name
+                teacher_dict = {"user_id": user_id,
+                                "teacher_id": teacher_id,
+                                "teacher_name": teacher_name,
+                                "teacher_school": teacher_school}
+                video_dict["video_id"] = video.id
+                video_dict["video_name"] = video.video_name
+                video_dict["is_issue"] = video.is_issue
+                video_dict["file_path"] = video.file_path
+                video_dict["video_date"] = video.video_date
+                video_dict["teacher_data"] = teacher_dict
+                video_dict["image_path"] = video.image_path
+                video_dict["video_status"] = video.status
+                video_dict["domain"] = video.teacher_id.school_id.domain
+                video_dict["video_notes"] = note_list
+                video_dict["video_moments"] = moment_list
+                video_dict["label_list"] = label_list
+                data["video_data"].append(video_dict)
+            data["status"] = 200
+            return JsonResponse(data=data)
         if query_field:
             user_set = User.objects.filter(username__icontains=query_field).exclude(role="admin").exclude(role="user").order_by("-id")
             new_user_set = data_paginator(user_set, 1, 5)
@@ -102,9 +152,6 @@ def video_list(request, token):
             data["status"] = 200
             return JsonResponse(data=data)
         else:
-            user = User.objects.filter(openid=token).first()
-            if not user:
-                return JsonResponse(data={"error": "用户未注册", "status": 401})
             videos_set = Video.objects.filter(is_delete=False, is_issue=True, status=True).order_by("-id")
             new_videos_set = data_paginator(videos_set, page, limit)
             if not new_videos_set:
@@ -445,13 +492,15 @@ def attention_videos(request, token):
         if not user_obj:
             return JsonResponse(data={"error": "用户未注册", "status": 401})
         teacher_set = RelationUser.objects.filter(user_id=user_obj)
-        new_teacher_set = data_paginator(teacher_set, page, limit)
-        for teacher_obj in new_teacher_set:
+        for teacher_obj in teacher_set:
             video_set = Video.objects.filter(teacher_id=teacher_obj.teacher_id,
                                              is_delete=False,
                                              is_issue=True,
                                              status=True).order_by("-id")
-            for video_obj in video_set:
+            new_video_set = data_paginator(video_set, page, limit)
+            if not new_video_set:
+                return JsonResponse(data={"error": "我是有底线的", "status": 404})
+            for video_obj in new_video_set:
                 video_dict = dict()
                 note_list = list()
                 moment_list = list()
@@ -1006,6 +1055,7 @@ def teacher_video_list(request, token, **kwargs):
                                           status=True,
                                           is_issue=True).order_by("-id")
         new_videos_set = data_paginator(videos_set, page, limit)
+
         for video in new_videos_set:
             video_dict = dict()
             note_list = list()

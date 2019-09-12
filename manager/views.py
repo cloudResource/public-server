@@ -405,18 +405,35 @@ def available_classrooms(request):
     data = {"data": []}
     try:
         admin_school_obj = User.objects.filter(id=admin_user_id).first().school
-        class_set = Class.objects.filter(school_id=admin_school_obj, equipment=None)
-        for class_obj in class_set:
-            class_dict = dict()
-            equipment_obj = Equipment.objects.filter(class_id=class_obj).first()
-            if equipment_obj:
-                continue
-            class_dict["class_id"] = class_obj.id
-            class_dict["class_name"] = class_obj.class_name
-            class_dict["grade_name"] = class_obj.grade_name
-            data["data"].append(class_dict)
+        grade_set = Class.objects.values_list("grade_name", flat=True).distinct()
+        for grade_name in grade_set:
+            grade_dict = dict()
+            grade_list = list()
+            class_set = Class.objects.filter(school_id=admin_school_obj, grade_name=grade_name, equipment=None)
+            for class_obj in class_set:
+                class_dict = dict()
+                equipment_dict = dict()
+                class_dict["id"] = class_obj.id
+                class_dict["class_name"] = class_obj.class_name
+                class_dict["grade_name"] = class_obj.grade_name
+                equipment_obj = Equipment.objects.filter(class_id=class_obj).first()
+                if equipment_obj:
+                    teacher_dict = dict()
+                    equipment_dict["equipment_id"] = class_obj.equipment.id
+                    equipment_dict["status"] = class_obj.equipment.status
+                    equipment_dict["mac_address"] = class_obj.equipment.mac_address
+                    if equipment_obj.teacher_id:
+                        teacher_dict["user_id"] = class_obj.equipment.teacher_id.user_id.id
+                        teacher_dict["teacher_name"] = class_obj.equipment.teacher_id.user_id.username
+                    equipment_dict["teacher_data"] = teacher_dict
+                class_dict["equipment_dict"] = equipment_dict
+                grade_list.append(class_dict)
+            grade_dict["grade_name"] = grade_name
+            grade_dict["grade_class"] = grade_list
+            data["data"].append(grade_dict)
+        data["domain"] = admin_school_obj.domain
         data["status"] = 200
-        return JsonResponse(data)
+        return JsonResponse(data=data)
     except Exception as e:
         logger.error(e)
         return JsonResponse(data={"error": "获取数据失败", "status": 400}, status=400)
