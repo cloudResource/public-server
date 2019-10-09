@@ -132,19 +132,40 @@ def info(request, token):
         user = User.objects.filter(openid=token).first()
         if not user:
             return JsonResponse(data={"error": "用户未注册", "status": 401})
-        label_set = user.label_set.all()
-        label_list = []
-        for label_obj in label_set:
-            label_dict = dict()
-            label_dict["id"] = label_obj.id
-            label_dict["label"] = label_obj.label
-            label_list.append(label_dict)
-        user_id = user.id
-        mobile = user.mobile
-        user_name = user.username
-        role = user.role
-        data = {"id": user_id, "mobile": mobile, "user_name": user_name, "role": role, "label": label_list}
-        return JsonResponse(data={"data": data, "status": 200})
+        if user.role == "user":
+            label_set = user.label_set.all()
+            label_list = []
+            for label_obj in label_set:
+                label_dict = dict()
+                label_dict["id"] = label_obj.id
+                label_dict["label"] = label_obj.label
+                label_list.append(label_dict)
+            user_id = user.id
+            mobile = user.mobile
+            user_name = user.username
+            role = user.role
+            data = {"id": user_id, "mobile": mobile, "user_name": user_name, "role": role, "label": label_list}
+            return JsonResponse(data={"data": data, "status": 200})
+        else:
+            label_set = user.label_set.all()
+            label_list = []
+            for label_obj in label_set:
+                label_dict = dict()
+                label_dict["id"] = label_obj.id
+                label_dict["label"] = label_obj.label
+                label_list.append(label_dict)
+            user_id = user.id
+            mobile = user.mobile
+            user_name = user.username
+            role = user.role
+            school = user.teacher.school_id.school_name
+            data = {"id": user_id,
+                    "mobile": mobile,
+                    "user_name": user_name,
+                    "role": role,
+                    "label": label_list,
+                    "school": school}
+            return JsonResponse(data={"data": data, "status": 200})
     except Exception as e:
         logger.error(e)
         return JsonResponse(data={"error": "获取数据失败", "status": 404}, status=404)

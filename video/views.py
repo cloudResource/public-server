@@ -31,8 +31,6 @@ def video_list(request, token):
         if not user:
             videos_set = Video.objects.filter(is_delete=False, is_issue=True, status=True).order_by("-id")
             new_videos_set = data_paginator(videos_set, page, limit)
-            if not new_videos_set:
-                return JsonResponse(data={"error": "我是有底线的", "status": 404})
             for video in new_videos_set:
                 video_dict = dict()
                 note_list = list()
@@ -64,6 +62,7 @@ def video_list(request, token):
                 teacher_dict = {"user_id": user_id,
                                 "teacher_id": teacher_id,
                                 "teacher_name": teacher_name,
+                                "label_list": label_list,
                                 "teacher_school": teacher_school}
                 video_dict["video_id"] = video.id
                 video_dict["video_name"] = video.video_name
@@ -76,7 +75,6 @@ def video_list(request, token):
                 video_dict["domain"] = video.teacher_id.school_id.domain
                 video_dict["video_notes"] = note_list
                 video_dict["video_moments"] = moment_list
-                video_dict["label_list"] = label_list
                 data["video_data"].append(video_dict)
             data["status"] = 200
             return JsonResponse(data=data)
@@ -85,19 +83,24 @@ def video_list(request, token):
             new_user_set = data_paginator(user_set, 1, 5)
             for user_obj in new_user_set:
                 teacher_dict = dict()
+                label_list = list()
                 user_id = user_obj.id
                 teacher_id = user_obj.teacher.id
                 user_name = user_obj.username
+                label_set = user_obj.label_set.all()
+                for label_obj in label_set:
+                    label_list.append({"label": label_obj.label})
+                teacher_school = user_obj.teacher.school_id.school_name
                 teacher_dict["user_id"] = user_id
                 teacher_dict["teacher_id"] = teacher_id
+                teacher_dict["teacher_school"] = teacher_school
                 teacher_dict["teacher_name"] = user_name
+                teacher_dict["label_list"] = label_list
                 data["teacher_data"].append(teacher_dict)
             video_set = Video.objects.filter(video_name__icontains=query_field).filter(is_delete=False,
                                                                                        is_issue=True,
                                                                                        status=True).order_by("-id")
             new_videos_set = data_paginator(video_set, page, limit)
-            if not new_videos_set:
-                return JsonResponse(data={"error": "我是有底线的", "status": 404})
             for video in new_videos_set:
                 video_dict = dict()
                 note_list = list()
@@ -135,6 +138,7 @@ def video_list(request, token):
                                 "teacher_id": teacher_id,
                                 "teacher_name": teacher_name,
                                 "teacher_school": teacher_school,
+                                "label_list": label_list,
                                 "is_attention": is_attention}
                 video_dict["video_id"] = video.id
                 video_dict["video_name"] = video.video_name
@@ -147,15 +151,12 @@ def video_list(request, token):
                 video_dict["domain"] = video.teacher_id.school_id.domain
                 video_dict["video_notes"] = note_list
                 video_dict["video_moments"] = moment_list
-                video_dict["label_list"] = label_list
                 data["video_data"].append(video_dict)
             data["status"] = 200
             return JsonResponse(data=data)
         else:
             videos_set = Video.objects.filter(is_delete=False, is_issue=True, status=True).order_by("-id")
             new_videos_set = data_paginator(videos_set, page, limit)
-            if not new_videos_set:
-                return JsonResponse(data={"error": "我是有底线的", "status": 404})
             for video in new_videos_set:
                 video_dict = dict()
                 note_list = list()
@@ -193,6 +194,7 @@ def video_list(request, token):
                                 "teacher_id": teacher_id,
                                 "teacher_name": teacher_name,
                                 "teacher_school": teacher_school,
+                                "label_list": label_list,
                                 "is_attention": is_attention}
                 video_dict["video_id"] = video.id
                 video_dict["video_name"] = video.video_name
@@ -205,7 +207,6 @@ def video_list(request, token):
                 video_dict["domain"] = video.teacher_id.school_id.domain
                 video_dict["video_notes"] = note_list
                 video_dict["video_moments"] = moment_list
-                video_dict["label_list"] = label_list
                 data["video_data"].append(video_dict)
             data["status"] = 200
             return JsonResponse(data=data)
@@ -253,6 +254,8 @@ class CommentListCreateView(ListCreateAPIView):
                 user_name = comment_obj.user_id.username
                 label_set = comment_obj.user_id.label_set.all()
                 label_list = list()
+                if comment_obj.user_id.role != "user":
+                    comment_dict["school"] = comment_obj.user_id.teacher.school_id.school_name
                 for label_obj in label_set:
                     label_dict = dict()
                     label_dict["id"] = label_obj.id
@@ -498,8 +501,6 @@ def attention_videos(request, token):
                                              is_issue=True,
                                              status=True).order_by("-id")
             new_video_set = data_paginator(video_set, page, limit)
-            if not new_video_set:
-                return JsonResponse(data={"error": "我是有底线的", "status": 404})
             for video_obj in new_video_set:
                 video_dict = dict()
                 note_list = list()
@@ -673,6 +674,7 @@ def video_start(request, token):
                                          image_path=image_path,
                                          video_date=video_date,
                                          teacher_id=user_obj.teacher)
+        equipment_obj.video_id = video_obj.id
         equipment_obj.save()
         return JsonResponse(data={"data": {"id": video_obj.id,
                                            "video_name": video_date, },
@@ -732,6 +734,7 @@ def video_stop(request, token):
                                 video_id=video_obj)
         equipment_obj.status = "available"
         equipment_obj.teacher_id = None
+        equipment_obj.video_id = None
         video_obj.status = True
         image_path = video_obj.image_path
         equipment_obj.save()
@@ -839,6 +842,7 @@ def get_classes(request, token):
                     if equipment_obj.teacher_id:
                         teacher_dict["user_id"] = class_obj.equipment.teacher_id.user_id.id
                         teacher_dict["teacher_name"] = class_obj.equipment.teacher_id.user_id.username
+                        teacher_dict["video_id"] = class_obj.equipment.video_id
                     equipment_dict["teacher_data"] = teacher_dict
                 class_dict["equipment_dict"] = equipment_dict
                 grade_list.append(class_dict)

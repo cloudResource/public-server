@@ -31,7 +31,11 @@ def get_teachers(request):
             teacher_id = teacher_obj.id
             teacher_name = teacher_obj.user_id.username
             teacher_mobile = teacher_obj.user_id.mobile
-            teacher_dict = {"teacher_id": teacher_id, "teacher_name": teacher_name, "teacher_mobile": teacher_mobile}
+            teacher_role = teacher_obj.user_id.role
+            teacher_dict = {"teacher_id": teacher_id,
+                            "teacher_name": teacher_name,
+                            "teacher_mobile": teacher_mobile,
+                            "teacher_role": teacher_role}
             data["data"].append(teacher_dict)
         data["status"] = 200
         return JsonResponse(data)
@@ -495,6 +499,35 @@ def detach_classroom(request, **kwargs):
         if equipment_obj.school_id != admin_school_obj:
             return JsonResponse(data={"error": "无权操作", "status": 400})
         if equipment_obj.class_id is None:
+            return JsonResponse(data={"error": "该设备未绑定教室", "status": 400})
+        equipment_obj.class_id = None
+        equipment_obj.save()
+        return JsonResponse(data={"message": "解绑成功", "status": 200})
+    except Exception as e:
+        logger.error(e)
+        return JsonResponse(data={"error": "解绑失败", "status": 400}, status=400)
+
+
+@check_login()
+def detach_equipment(request, **kwargs):
+    """
+    教室解绑设备
+    :param request:
+    :return:
+    """
+    admin_user_id = request.session.get('user_id')
+    class_id = kwargs.get("uuid")
+    if not class_id:
+        return JsonResponse(data={"error": "缺少必传参数", "status": 400})
+    try:
+        admin_school_obj = User.objects.filter(id=admin_user_id).first().school
+        class_obj = Class.objects.filter(id=class_id).first()
+        if not class_obj:
+            return JsonResponse(data={"error": "此教室不存在", "status": 400})
+        if class_obj.school_id != admin_school_obj:
+            return JsonResponse(data={"error": "无权操作", "status": 400})
+        equipment_obj = Equipment.objects.filter(class_id=class_obj).first()
+        if not equipment_obj:
             return JsonResponse(data={"error": "该设备未绑定教室", "status": 400})
         equipment_obj.class_id = None
         equipment_obj.save()

@@ -44,6 +44,7 @@ class Class(models.Model):
 class Equipment(models.Model):
     mac_address = models.CharField(max_length=100, unique=True, null=True, help_text="设备mac地址")
     teacher_id = models.ForeignKey(Teacher, on_delete=models.SET_NULL, null=True, db_column="teacher_id")
+    video_id = models.IntegerField(help_text="正在录制视频ID", null=True)
     class_id = models.OneToOneField(Class, on_delete=models.SET_NULL, blank=True, null=True,
                                     db_column="class_id", related_name='equipment')
     status = models.CharField(max_length=16, default="available", help_text="设备的状态")  # available: 可用, in_use: 使用中

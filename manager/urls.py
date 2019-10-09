@@ -32,6 +32,7 @@ urlpatterns = [
     url(r'^v1/equipment/available$', views.available_equipments),  # 查询所有未绑定教室的设备
     url(r'^v1/equipment/(?P<uuid>[\w-]+)/attach_classroom$', views.attach_classroom),  # 设备绑定教室
     url(r'^v1/equipment/(?P<uuid>[\w-]+)/detach_classroom$', views.detach_classroom),  # 设备解绑教室
+    url(r'^v1/classroom/(?P<uuid>[\w-]+)/detach_equipment$', views.detach_equipment),  # 教室解绑设备
     url(r'^v1/file_down$', views.file_down),  # 下载批量模板
     url(r'^v1/project_data', views.project_data),  # 查询项目信息
     url(r'^v1/login$', views.login),  # 学校管理员登录
